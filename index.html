@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="project-author" content="Owen Michael Read">
+    <meta name="Description"
+        content="Welcome to Project Atmos. Post your ambition and join others on life-changing projects!">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explore Exospheres | PeX</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="gradient-canvas">
+
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">PeX <span class="brand-subtext">| Exosphere</span></a>
+            <nav>
+                <a href="index.html" class="nav-link active">Explore</a>
+                <a href="#" class="nav-link">Dashboard</a>
+                <a href="#" class="btn-primary">Launch Project</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="feed-container">
+
+        <header class="feed-header">
+            <span class="hero-pretitle">Active Ventures Portal</span>
+            <h1>Discover the Exosphere</h1>
+            <p>Connect intent with raw execution. Join elite teams or recruit collaborators to build out major
+                ambitions.</p>
+        </header>
+
+        <section class="control-panel">
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input"
+                    placeholder="Filter projects by title, stack, or target keywords..." autocomplete="off">
+            </div>
+            <div class="filter-pills" id="category-filters">
+                <button class="pill-btn active" data-category="all">All Fields</button>
+                <button class="pill-btn" data-category="Automotive">Automotive</button>
+                <button class="pill-btn" data-category="Sports & Community">Sports & Community</button>
+                <button class="pill-btn" data-category="Culinary & Events">Culinary & Events</button>
+            </div>
+        </section>
+
+        <section class="project-grid" id="project-feed"></section>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+
+</html>

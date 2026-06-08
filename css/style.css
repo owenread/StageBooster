@@ -1,0 +1,482 @@
+/* ==========================================================================
+   1. EXOSPHERE DESIGN SYSTEM & CORE TOKENS
+   ========================================================================== */
+:root {
+    /* Color Palette */
+    --bg-canvas: #fafbfe;
+    /* Soft, high-end modern layout canvas */
+    --bg-surface: #ffffff;
+    /* Solid pure white sheets */
+    --text-primary: #090d16;
+    /* Rich deep obsidian ink for ultimate legibility */
+    --text-secondary: #475569;
+    /* Slate grey for clean paragraphs */
+    --text-muted: #94a3b8;
+    /* Fine typography treatments */
+
+    /* Branding Core Values */
+    --brand-purple: #6d28d9;
+    /* High-energy, imaginative primary violet */
+    --brand-glow: rgba(109, 40, 217, 0.08);
+    --border-clean: #f1f5f9;
+    /* Crisp, minimalist lines */
+    --border-focus: #cbd5e1;
+
+    /* Functional Status Tokens */
+    --status-ideation-bg: #fff1f2;
+    --status-ideation-txt: #e11d48;
+    /* Sunset Rose */
+    --status-planning-bg: #eff6ff;
+    --status-planning-txt: #2563eb;
+    /* Cobalt Sky */
+    --status-active-bg: #ecfdf5;
+    --status-active-txt: #059669;
+    /* Deep Mint */
+
+    /* Typography Scales */
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Geometry & Depth Map */
+    --radius-pill: 50px;
+    --radius-card: 20px;
+    --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    --shadow-premium: 0 4px 30px rgba(9, 13, 22, 0.03), 0 1px 3px rgba(9, 13, 22, 0.02);
+    --shadow-hover: 0 20px 40px rgba(109, 40, 217, 0.06), 0 1px 5px rgba(9, 13, 22, 0.01);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   2. STICKY GLASS NAVIGATION BAR
+   ========================================================================== */
+.navbar {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-clean);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 2.5rem;
+    height: 76px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    text-decoration: none;
+    letter-spacing: -0.75px;
+}
+
+.brand-subtext {
+    font-weight: 400;
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.nav-link {
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: var(--transition-smooth);
+}
+
+.nav-link:hover,
+.nav-link.active {
+    color: var(--brand-purple);
+}
+
+/* Interactive Actions */
+.btn-primary,
+.btn-secondary {
+    display: inline-block;
+    padding: 0.65rem 1.4rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    border: none;
+}
+
+.btn-primary {
+    background-color: var(--text-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--brand-purple);
+    box-shadow: 0 4px 14px var(--brand-glow);
+}
+
+.btn-secondary {
+    background-color: var(--bg-canvas);
+    border: 1px solid var(--border-clean);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.btn-secondary:hover {
+    background-color: white;
+    border-color: var(--brand-purple);
+    color: var(--brand-purple);
+}
+
+/* ==========================================================================
+   3. HERO BANNER AND SEARCH ENGINE LAYOUT
+   ========================================================================== */
+.feed-container {
+    max-width: 1240px;
+    margin: 4rem auto;
+    padding: 0 2.5rem;
+}
+
+.feed-header {
+    margin-bottom: 3.5rem;
+    max-width: 700px;
+}
+
+.hero-pretitle {
+    font-family: var(--font-mono);
+    color: var(--brand-purple);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    display: inline-block;
+    margin-bottom: 0.75rem;
+}
+
+.feed-header h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -1.25px;
+    line-height: 1.15;
+    margin-bottom: 1rem;
+}
+
+.feed-header p {
+    color: var(--text-secondary);
+    font-size: 1.15rem;
+}
+
+/* Control Engine Styling */
+.control-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.search-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    pointer-events: none;
+}
+
+.search-wrapper input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem;
+    font-family: inherit;
+    font-size: 1rem;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-clean);
+    border-radius: 14px;
+    box-shadow: var(--shadow-premium);
+    outline: none;
+    transition: var(--transition-smooth);
+}
+
+.search-wrapper input:focus {
+    border-color: var(--brand-purple);
+    box-shadow: 0 0 0 4px var(--brand-glow);
+}
+
+/* Category Selection Control Pills */
+.filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.pill-btn {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-clean);
+    padding: 0.5rem 1.2rem;
+    border-radius: var(--radius-pill);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.pill-btn:hover {
+    border-color: var(--border-focus);
+    color: var(--text-primary);
+}
+
+.pill-btn.active {
+    background-color: var(--text-primary);
+    border-color: var(--text-primary);
+    color: white;
+}
+
+/* ==========================================================================
+   4. PREMIUM CARD GRID ARCHITECTURE
+   ========================================================================== */
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 2.5rem;
+}
+
+.project-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-clean);
+    border-radius: var(--radius-card);
+    padding: 2.25rem;
+    box-shadow: var(--shadow-premium);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 360px;
+    transition: var(--transition-smooth);
+    position: relative;
+}
+
+/* Micro-Interaction Target */
+.project-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-hover);
+    border-color: rgba(109, 40, 217, 0.15);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+/* Micro Status Tags */
+.badge {
+    padding: 0.3rem 0.85rem;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-planning {
+    background-color: var(--status-planning-bg);
+    color: var(--status-planning-txt);
+}
+
+.badge-ideation {
+    background-color: var(--status-ideation-bg);
+    color: var(--status-ideation-txt);
+}
+
+.badge-active {
+    background-color: var(--status-active-bg);
+    color: var(--status-active-txt);
+}
+
+.project-category {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.project-title {
+    font-size: 1.5rem;
+    font-weight: 750;
+    letter-spacing: -0.5px;
+    margin-bottom: 0.35rem;
+    line-height: 1.25;
+}
+
+.project-author {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+.project-excerpt {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    flex-grow: 1;
+}
+
+/* Skills/Roles Badge Trays */
+.card-roles {
+    margin-bottom: 2rem;
+}
+
+.card-roles strong {
+    display: block;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.75px;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.role-tag {
+    display: inline-block;
+    background-color: var(--bg-canvas);
+    border: 1px solid var(--border-clean);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 8px;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.card-footer {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ==========================================================================
+   6. RIGHT-ALIGNED VERTICAL ROCKET PROGRESS BAR (BOTTOM-UP WITH 45° TOP CUT)
+   ========================================================================== */
+.project-card {
+    position: relative;
+    overflow: hidden;
+    /* Give the right side of the card some breathing room so the text doesn't touch our bar */
+    padding-right: 2.75rem !important;
+}
+
+/* BASE VERTICAL TRACK: Anchored perfectly to the bottom-right corner */
+.card-progress-bar {
+    position: absolute;
+    bottom: 0;
+    /* Rocket launch engine baseline anchored to bottom */
+    top: auto;
+    /* Sever previous top anchoring */
+    right: 0;
+    left: auto;
+    width: 8px;
+    /* Thickness of the rocket track */
+    height: var(--target-width);
+    background: linear-gradient(0deg, var(--brand-purple), #a855f7);
+    /* Vibrant fuel fire rising up */
+    z-index: 1;
+
+    /* REVERSED 45° Angle Cut Matrix:
+       Slices the TOP edge instead of the bottom edge.
+       Points: top-left (0% 8px), top-right (100% 0%), bottom-right (100% 100%), bottom-left (0% 100%).
+       This gives the rising bar a sharp arrowhead/rocket tip slant.
+    */
+    clip-path: polygon(0% 8px, 100% 0%, 100% 100%, 0% 100%);
+}
+
+/* HOVER BOOST OVERLAY: Surges upwards from bottom to top over the purple line */
+.card-progress-bar::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    /* Anchored to the engine base */
+    top: auto;
+    left: 0;
+    width: 100%;
+    height: 0%;
+    /* Starts flat at 0% height at the bottom */
+    background: linear-gradient(0deg, #06b6d4, #10b981);
+    /* Electric booster plasma teal */
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+
+    /* Mirror the exact same rocket-tip clip path */
+    clip-path: polygon(0% 8px, 100% 0%, 100% 100%, 0% 100%);
+}
+
+/* On card hover, trigger the structural bottom-up rocket surge */
+.project-card:hover .card-progress-bar::after {
+    opacity: 1;
+    animation: verticalSurgeFill 0.85s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+/* Fixes the underscore typo and drives height clean from 0% to a full 100% container cap */
+@keyframes verticalSurgeFill {
+    0% {
+        height: 0%;
+    }
+
+    100% {
+        height: 100%;
+    }
+}
+
+/* Unified Footer Layout adjustment for counts alignment */
+.card-footer-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border-clean);
+}
+
+.contributor-count {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.contributor-count strong {
+    color: var(--text-primary);
+}
