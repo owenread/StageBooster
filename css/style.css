@@ -480,3 +480,115 @@ nav {
 .contributor-count strong {
     color: var(--text-primary);
 }
+
+/* ==========================================================================
+   5. CINEMATIC TOP-CENTER TEXT REVEAL & CTA ARCHITECTURE (STABILIZED)
+   ========================================================================== */
+.cinematic-hero {
+    text-align: center;
+    max-width: 950px;
+    margin: 6rem auto 5rem auto;
+    /* Explicit height container prevents any jumping or layout shifting */
+    height: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.hero-phrase-gallery {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* ALL PHRASES ARE STABLE: Absolute positioning locks them to the exact same coordinates */
+.story-phrase {
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -1.5px;
+    margin: 0;
+
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    /* Perfectly centers every phrase vertically */
+
+    opacity: 0;
+    pointer-events: none;
+
+    /* 400% canvas allows a much cleaner, more gradual separation of colors */
+    background: linear-gradient(90deg,
+            var(--text-primary) 0%,
+            var(--brand-purple) 20%,
+            var(--text-muted) 40%,
+            var(--text-muted) 100%);
+    background-size: 400% 100%;
+    background-position: 100% 0%;
+
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* Slower durations (2.8s for the wipe) paired with a smooth cinematic curve */
+    transition: opacity 1.5s ease-in-out,
+        background-position 2.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* ACTIVE STATE: Cross-fades in completely stationary */
+.story-phrase.active {
+    opacity: 1;
+    background-position: 0% 0%;
+}
+
+/* EXIT TRAJECTORY: Fades out in place without shifting its position */
+.story-phrase.exiting {
+    opacity: 0;
+    background-position: 0% 0%;
+    /* Keeps the lit color state intact while fading out */
+    transition: opacity 1.5s ease-in-out;
+}
+
+/* THE CLIMAX REVEAL */
+.hero-cta-reveal {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%) scale(0.95);
+    opacity: 0;
+    pointer-events: none;
+    text-align: center;
+    width: 100%;
+    transition: opacity 1.5s ease-in-out,
+        transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-cta-reveal.awoken {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+    pointer-events: auto;
+}
+
+.hero-cta-reveal h2 {
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -0.75px;
+    margin-bottom: 1.25rem;
+}
+
+.btn-launch-rocket {
+    padding: 0.9rem 2.5rem !important;
+    font-size: 1.05rem !important;
+    border-radius: var(--radius-pill) !important;
+    box-shadow: 0 10px 30px rgba(109, 40, 217, 0.2);
+}
+
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 2.5rem;
+    width: 100%;
+}

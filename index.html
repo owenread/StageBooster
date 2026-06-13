@@ -15,7 +15,7 @@
 
     <header class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="logo">PeX <span class="brand-subtext">| Exosphere</span></a>
+            <a href="index.html" class="logo">MaxQ <span class="brand-subtext">| Exosphere</span></a>
             <nav>
                 <a href="index.html" class="nav-link active">Explore</a>
                 <a href="#" class="nav-link">Dashboard</a>
@@ -26,13 +26,22 @@
 
     <main class="feed-container">
 
-        <header class="feed-header">
-            <span class="hero-pretitle">Active Ventures Portal</span>
-            <h1>Discover the Exosphere</h1>
-            <p>Connect intent with raw execution. Join elite teams or recruit collaborators to build out major
-                ambitions.</p>
-        </header>
+        <header class="feed-header cinematic-hero">
+            <span class="hero-pretitle">Active Ventures</span>
 
+            <div class="hero-phrase-gallery">
+                <h1 class="story-phrase active" id="phrase-1">Collaborate with others to achieve major breakthroughs.
+                </h1>
+                <h1 class="story-phrase" id="phrase-2">Your project is waiting, your dream team is here.</h1>
+                <h1 class="story-phrase" id="phrase-3">
+                    building together.</h1>
+            </div>
+
+            <div class="hero-cta-reveal" id="hero-cta-block">
+                <h2>Got any ideas?</h2>
+                <a href="#" class="btn-primary btn-launch-rocket">Start Now</a>
+            </div>
+        </header>
         <section class="control-panel">
             <div class="search-wrapper">
                 <span class="search-icon">🔍</span>
@@ -47,7 +56,13 @@
             </div>
         </section>
 
-        <section class="project-grid" id="project-feed"></section>
+        <div class="split-viewport-layout">
+
+            <section class="project-grid" id="project-feed">
+            </section>
+
+
+        </div>
     </main>
 
     <script src="js/app.js"></script>

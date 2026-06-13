@@ -68,7 +68,7 @@ let currentSearchQuery = "";
 let selectedCategoryFilter = "all";
 
 // ==========================================================================
-// 2. DOM MANIPULATION & INTERACTION ENGINE
+// 2. DOM MANIPULATION & INTERACTION ENGINE (Index Page Dashboard)
 // ==========================================================================
 function renderProjectFeed() {
     const feedContainer = document.getElementById("project-feed");
@@ -85,7 +85,7 @@ function renderProjectFeed() {
 
     if (filteredProjects.length === 0) {
         feedContainer.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem; background: white; border-radius: 20px; border: 1px dashed var(--border-clean);">
+            <div style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem; background: white; border-radius: 20px; border: 1px dashed var(--border-clean); width: 100%;">
                 <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">No matching ventures found</h3>
                 <p style="color: var(--text-secondary);">Try readjusting your search criteria or changing selection tabs.</p>
             </div>
@@ -136,9 +136,6 @@ function renderProjectFeed() {
     });
 }
 
-// ==========================================================================
-// 2B. INTERACTIVE FILTER & SEARCH EVENT LISTENERS
-// ==========================================================================
 function initializeFeedControls() {
     const searchInput = document.getElementById("search-input");
     const filterContainer = document.getElementById("category-filters");
@@ -169,7 +166,7 @@ function initializeFeedControls() {
 }
 
 // ==========================================================================
-// 3. DETAIL PAGE MANIPULATION (Render dynamic individual pages)
+// 3. DETAIL PAGE MANIPULATION (Render dynamic individual project layouts)
 // ==========================================================================
 function renderProjectDetail() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -234,10 +231,61 @@ function renderProjectDetail() {
 }
 
 // ==========================================================================
-// 4. UNIFIEDINITIALIZATION INITIALIZER (Single clear entry window)
+// 4. THE CINEMATIC STORYLINE CONTROLLER (OVERLAPPING CROSS-FADE)
 // ==========================================================================
-document.addEventListener("DOMContentLoaded", () => {
-    renderProjectFeed();
-    initializeFeedControls();
-    renderProjectDetail();
+function runCinematicStoryline() {
+    const phrases = document.querySelectorAll('.story-phrase');
+    const ctaBlock = document.getElementById('hero-cta-block');
+    if (phrases.length === 0) return;
+
+    let currentIndex = 0;
+
+    function transitionToNext() {
+        const currentPhrase = phrases[currentIndex];
+
+        // 1. Initiate fade out on the current phrase in place
+        currentPhrase.classList.remove('active');
+        currentPhrase.classList.add('exiting');
+
+        currentIndex++;
+
+        // 2. If phrases are left, trigger the incoming phrase EARLY for a massive cross-fade overlap
+        if (currentIndex < phrases.length) {
+            setTimeout(() => {
+                phrases[currentIndex].classList.add('active');
+
+                // Allow the phrase to sit illuminated for 5.5 seconds before starting the next transition
+                setTimeout(transitionToNext, 5500);
+            }, 800); // 800ms delay means it enters well before the previous phrase finishes fading out
+        } else {
+            // 3. CLIMAX: Transition smoothly to the final CTA card anchor
+            setTimeout(() => {
+                if (ctaBlock) ctaBlock.classList.add('awoken');
+            }, 1000);
+        }
+    }
+
+    // First initialization beat
+    setTimeout(() => {
+        phrases[0].classList.add('active');
+        setTimeout(transitionToNext, 6000); // Give the first statement plenty of reading room
+    }, 400);
+}
+// ==========================================================================
+// 5. CENTRAL APPLICATION INIT ENGINE (Context Aware Router)
+// ==========================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Check which element layers are present to identify the active page context safely
+    const isIndexPage = document.getElementById("project-feed") !== null;
+    const isDetailPage = window.location.search.includes('id=');
+
+    if (isIndexPage) {
+        // Run specific scripts for the main browse dashboard context
+        runCinematicStoryline();
+        initializeFeedControls();
+        renderProjectFeed();
+    } else if (isDetailPage) {
+        // Run specific scripts for deep dynamic project detail pages context
+        renderProjectDetail();
+    }
 });
