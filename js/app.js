@@ -4,68 +4,76 @@
 const projectsData = [
     {
         id: "proj-001",
-        title: "Build a Backyard Half-Court",
-        author: "Alex Jenkins",
-        category: "Sports & Community",
-        status: "planning",
-        excerpt: "Looking to pour a concrete slab and set up a pro-grade hoop. Need people to split tool rentals and help build.",
-        description: "I have an empty, unlevel dirt patch in my backyard that is the perfect size for a half-court. The goal is to clear the ground, pour a professional-grade concrete slab, seal it, and install a top-tier adjustable basketball hoop system complete with court lines.",
-        roles: ["Concrete Finisher", "General Help"],
+        title: "AtmosDrive: Open-Source ECU Tuning Platform",
+        author: "Owen R.",
+        category: "Automotive",
+        status: "active",
+        excerpt: "Building a next-generation telemetry dashboard and open-source tuning interface optimized for direct-injection platforms.",
+        description: "AtmosDrive is a long-term initiative to build an adaptable, open-source engine control unit (ECU) calibration interface and telemetry logging application. Our goal is to provide deep hardware integration, clean diagnostic visualizers, and cross-platform capabilities for tuning enthusiasts who want more control over direct-injection data maps.",
+        roles: ["C++ Core Dev", "UI/UX Designer", "QA Tester"],
         milestones: [
-            { text: "Excavate and level dirt patch", status: "completed" },
-            { text: "Build wooden framing and pour concrete", status: "current" },
-            { text: "Let cure and apply weather sealant paint", status: "pending" },
-            { text: "Anchor the basketball hoop structure and paint lines", status: "pending" }
+            { text: "Map logging infrastructure for OBD-II streams", status: "completed" },
+            { text: "Architect the real-time React/Electron dashboard UI", status: "current" },
+            { text: "Build out safety guardrails and cross-platform compiles", status: "pending" }
         ],
         team: [
-            { name: "Alex Jenkins", role: "Owner", initials: "AJ" },
-            { name: "Sarah M.", role: "Contributor", initials: "SM" }
+            { name: "Owen R.", role: "Lead Architect", initials: "OR" },
+            { name: "Liam K.", role: "Systems Engineer", initials: "LK" }
         ]
     },
     {
         id: "proj-002",
-        title: "Subaru WRX Vinyl Wrap Collaboration",
-        author: "Owen R.",
-        category: "Automotive",
-        status: "ideation",
-        excerpt: "Planning to wrap my car in a satin slate gray finish. Looking for anyone who has experience with heat guns or vinyl stretching.",
-        description: "I am taking on the challenge of completely vinyl wrapping my 2016 WRX in satin slate gray. I have the vinyl roll ready, but wrapping complex bumpers and door handles is a massive headache solo. Looking for a fellow enthusiast who wants to learn, has a heat gun, or has experience tucking edges cleanly.",
-        roles: ["Vinyl Wrapper", "Body Work Help"],
+        title: "Apex Dental Suite: Practice Management Ecosystem",
+        author: "Dr. Sarah Miller",
+        category: "Medical & Business",
+        status: "planning",
+        excerpt: "Developing a premium, automated patient portal and clinic coordinator software to optimize dental office workflows.",
+        description: "We are establishing a robust, enterprise-grade software suite designed specifically for modern clinical operations. The goal is to build an integrated patient dashboard, smart automated text reminders, scheduling optimizers, and a secure portal that complies with high privacy standards, replacing clunky legacy dental systems.",
+        roles: ["Full-Stack Engineer", "Database Architect"],
         milestones: [
-            { text: "Deep clean exterior and remove badges/handles", status: "current" },
-            { text: "Wrap the hood and roof main panels", status: "pending" },
-            { text: "Tackle complex front and rear bumpers", status: "pending" },
-            { text: "Reassemble hardware and ceramic coat vinyl", status: "pending" }
+            { text: "Finalize database schemas and relational data maps", status: "completed" },
+            { text: "Build automated page audits and core portal routes", status: "current" },
+            { text: "Integrate encrypted real-time scheduling triggers", status: "pending" }
         ],
         team: [
-            { name: "Owen R.", role: "Owner", initials: "OR" }
+            { name: "Sarah M.", role: "Product Owner", initials: "SM" }
         ]
     },
     {
         id: "proj-003",
-        title: "Pop-Up Indie Ramen Shop",
-        author: "Miko T.",
-        category: "Culinary & Events",
-        status: "active",
-        excerpt: "Hosting a 2-night backyard traditional ramen pop-up event. Need a secondary prep cook and a ticketing coordinator.",
-        description: "We are turning our outdoor patio into an open-air Tokyo-style ramen stall for one weekend. The menu is fully locked down, but managing 45 bowls of fresh noodles, broth plating, and hot toppings simultaneously requires clean communication. Looking for passionate foodies to join the crew!",
-        roles: ["Prep Cook", "Event Coordinator"],
+        title: "HoopMap: Urban Sports Court Directory & League Engine",
+        author: "Marcus Vance",
+        category: "Sports & Community",
+        status: "ideation",
+        excerpt: "A permanent crowdsourced map and community matchmaking platform for local sports facilities and amateur leagues.",
+        description: "HoopMap is an ambitious project to map every outdoor court, field, and complex globally, pairing the data with a robust community matching engine. Users can track local court conditions, schedule pickup games, self-manage local amateur tournaments, and vote on community clean-up initiatives.",
+        roles: ["React Native Dev", "Geospatial Data Specialist"],
         milestones: [
-            { text: "Recipe testing and ingredient sourcing", status: "completed" },
-            { text: "Ticket sales and seating arrangements", status: "completed" },
-            { text: "Prep days and kitchen staging", status: "current" },
-            { text: "Execute the 2-night event service", status: "pending" }
+            { text: "Draft comprehensive software requirements and wireframes", status: "current" },
+            { text: "Build open-source interactive mapping wrapper", status: "pending" },
+            { text: "Deploy cross-platform mobile authentication protocols", status: "pending" }
         ],
         team: [
-            { name: "Miko T.", role: "Owner", initials: "MT" },
-            { name: "Kenji S.", role: "Contributor", initials: "KS" }
+            { name: "Marcus V.", role: "Founder", initials: "MV" }
         ]
     }
 ];
 
-// Global State Tracking variables for search metrics
+// Global State Tracking variables
 let currentSearchQuery = "";
 let selectedCategoryFilter = "all";
+
+// Safely handle the modal state without breaking global scope execution
+function openCollabModal(projectTitle) {
+    const collabModal = document.getElementById("collab-modal");
+    if (!collabModal) return;
+
+    const modalTitle = collabModal.querySelector('h3');
+    if (modalTitle) {
+        modalTitle.textContent = `Join ${projectTitle}`;
+    }
+    collabModal.classList.add("active");
+}
 
 // ==========================================================================
 // 2. DOM MANIPULATION & INTERACTION ENGINE (Index Page Dashboard)
@@ -85,7 +93,7 @@ function renderProjectFeed() {
 
     if (filteredProjects.length === 0) {
         feedContainer.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem; background: white; border-radius: 20px; border: 1px dashed var(--border-clean); width: 100%;">
+            <div style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem; background: rgba(255,255,255,0.8); border-radius: 20px; border: 1px dashed var(--border-clean); width: 100%;">
                 <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">No matching ventures found</h3>
                 <p style="color: var(--text-secondary);">Try readjusting your search criteria or changing selection tabs.</p>
             </div>
@@ -94,21 +102,15 @@ function renderProjectFeed() {
     }
 
     filteredProjects.forEach(project => {
-        const roleTagsHTML = project.roles
-            .map(role => `<span class="role-tag">${role}</span>`)
-            .join("");
-
-        // UX CALCULATION A: Get percentage of completed milestones
+        const roleTagsHTML = project.roles.map(role => `<span class="role-tag">${role}</span>`).join("");
         const totalMilestones = project.milestones ? project.milestones.length : 0;
         const completedMilestones = project.milestones ? project.milestones.filter(m => m.status === "completed").length : 0;
         const progressPercent = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
         const displayPercent = progressPercent === 0 ? 5 : progressPercent;
-
-        // UX CALCULATION B: Count current team members
         const contributorCount = project.team ? project.team.length : 1;
 
         const cardHTML = `
-            <article class="project-card" data-id="${project.id}">
+            <article class="project-card" data-id="${project.id}" onclick="window.location.href='project.html?id=${project.id}'">
                 <div class="card-progress-bar" style="--target-width: ${displayPercent}%;"></div>
 
                 <div class="card-header">
@@ -128,7 +130,7 @@ function renderProjectFeed() {
                     <span class="contributor-count">
                         👤 <strong>${contributorCount}</strong> ${contributorCount === 1 ? 'member' : 'crew members'}
                     </span>
-                    <a href="project.html?id=${project.id}" class="btn-secondary">View Project</a>
+                    <button class="btn-secondary open-collab-btn" onclick="event.stopPropagation(); openCollabModal('${project.title}')">Collab!</button>
                 </div>
             </article>
         `;
@@ -136,11 +138,13 @@ function renderProjectFeed() {
     });
 }
 
+// ==========================================================================
+// 3. DASHBOARD INTERACTION DECK (Search & Filter Init Engine)
+// ==========================================================================
 function initializeFeedControls() {
     const searchInput = document.getElementById("search-input");
-    const filterContainer = document.getElementById("category-filters");
+    const categoryFilters = document.getElementById("category-filters");
 
-    // Listen for live character input matching
     if (searchInput) {
         searchInput.addEventListener("input", (e) => {
             currentSearchQuery = e.target.value;
@@ -148,25 +152,22 @@ function initializeFeedControls() {
         });
     }
 
-    // Listen for category navigation tab pill actions
-    if (filterContainer) {
-        filterContainer.addEventListener("click", (e) => {
-            const clickedBtn = e.target.closest(".pill-btn");
-            if (!clickedBtn) return;
+    if (categoryFilters) {
+        categoryFilters.addEventListener("click", (e) => {
+            const targetButton = e.target.closest(".pill-btn");
+            if (!targetButton) return;
 
-            // Update UI pill active states
-            document.querySelectorAll(".pill-btn").forEach(btn => btn.classList.remove("active"));
-            clickedBtn.classList.add("active");
+            categoryFilters.querySelectorAll(".pill-btn").forEach(btn => btn.classList.remove("active"));
+            targetButton.classList.add("active");
 
-            // Update state and refresh cards
-            selectedCategoryFilter = clickedBtn.getAttribute("data-category");
+            selectedCategoryFilter = targetButton.getAttribute("data-category");
             renderProjectFeed();
         });
     }
 }
 
 // ==========================================================================
-// 3. DETAIL PAGE MANIPULATION (Render dynamic individual project layouts)
+// 4. DETAIL PAGE MANIPULATION (Render dynamic individual project layouts)
 // ==========================================================================
 function renderProjectDetail() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -231,7 +232,7 @@ function renderProjectDetail() {
 }
 
 // ==========================================================================
-// 4. THE CINEMATIC STORYLINE CONTROLLER (OVERLAPPING CROSS-FADE)
+// 5. THE CINEMATIC STORYLINE CONTROLLER (OVERLAPPING CROSS-FADE)
 // ==========================================================================
 function runCinematicStoryline() {
     const phrases = document.querySelectorAll('.story-phrase');
@@ -243,49 +244,84 @@ function runCinematicStoryline() {
     function transitionToNext() {
         const currentPhrase = phrases[currentIndex];
 
-        // 1. Initiate fade out on the current phrase in place
         currentPhrase.classList.remove('active');
         currentPhrase.classList.add('exiting');
 
         currentIndex++;
 
-        // 2. If phrases are left, trigger the incoming phrase EARLY for a massive cross-fade overlap
         if (currentIndex < phrases.length) {
             setTimeout(() => {
                 phrases[currentIndex].classList.add('active');
-
-                // Allow the phrase to sit illuminated for 5.5 seconds before starting the next transition
                 setTimeout(transitionToNext, 5500);
-            }, 800); // 800ms delay means it enters well before the previous phrase finishes fading out
+            }, 800);
         } else {
-            // 3. CLIMAX: Transition smoothly to the final CTA card anchor
             setTimeout(() => {
                 if (ctaBlock) ctaBlock.classList.add('awoken');
             }, 1000);
         }
     }
 
-    // First initialization beat
     setTimeout(() => {
         phrases[0].classList.add('active');
-        setTimeout(transitionToNext, 6000); // Give the first statement plenty of reading room
+        setTimeout(transitionToNext, 6000);
     }, 400);
 }
+
 // ==========================================================================
-// 5. CENTRAL APPLICATION INIT ENGINE (Context Aware Router)
+// 6. CENTRAL APPLICATION INIT ENGINE (Unified Single Router)
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Check which element layers are present to identify the active page context safely
+    // A. Hamburger Mobile UI Toggles
+    const hamburgerTrigger = document.getElementById("hamburger-trigger");
+    const navMenu = document.getElementById("nav-menu");
+
+    if (hamburgerTrigger && navMenu) {
+        hamburgerTrigger.addEventListener("click", () => {
+            hamburgerTrigger.classList.toggle("active");
+            navMenu.classList.toggle("active");
+        });
+    }
+
+    // B. Collaboration Modal Global Hooks
+    const collabModal = document.getElementById("collab-modal");
+    const closeModalBtn = document.getElementById("close-modal-btn");
+    const modalForm = document.getElementById("modal-join-form");
+
+    if (closeModalBtn && collabModal) {
+        closeModalBtn.addEventListener("click", () => collabModal.classList.remove("active"));
+        collabModal.addEventListener("click", (e) => {
+            if (e.target === collabModal) collabModal.classList.remove("active");
+        });
+    }
+
+    if (modalForm) {
+        modalForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            alert("Application submitted successfully to the project founder!");
+            collabModal.classList.remove("active");
+            modalForm.reset();
+        });
+    }
+
+    // C. Sidebar Detail Form Hooks
+    const sidebarForm = document.getElementById("join-project-form");
+    if (sidebarForm) {
+        sidebarForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            alert("Application submitted successfully to the project founder!");
+            sidebarForm.reset();
+        });
+    }
+
+    // D. View Routing Context Engine
     const isIndexPage = document.getElementById("project-feed") !== null;
     const isDetailPage = window.location.search.includes('id=');
 
     if (isIndexPage) {
-        // Run specific scripts for the main browse dashboard context
         runCinematicStoryline();
         initializeFeedControls();
         renderProjectFeed();
     } else if (isDetailPage) {
-        // Run specific scripts for deep dynamic project detail pages context
         renderProjectDetail();
     }
 });

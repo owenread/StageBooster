@@ -4,19 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Details | PeX</title>
+    <title>Project Details | MaxQ</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
-<body>
+<body class="gradient-canvas">
 
     <header class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="logo">PeX</a>
-            <nav>
+            <a href="index.html" class="logo">MaxQ <span class="brand-subtext">| Exosphere</span></a>
+
+            <button class="hamburger-menu" id="hamburger-trigger" aria-label="Toggle Navigation">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+
+            <nav id="nav-menu">
                 <a href="index.html" class="nav-link">Explore</a>
-                <a href="#" class="nav-link">My Projects</a>
-                <a href="#" class="btn-primary">Create Project</a>
+                <a href="#" class="nav-link">Dashboard</a>
+                <a href="#" class="btn-primary">Launch Project</a>
             </nav>
         </div>
     </header>
@@ -25,9 +32,8 @@
 
         <div class="project-main-content">
             <header class="project-detail-header">
-                <div class="meta-row">
-                </div>
-                <h1></h1>
+                <div class="meta-row"></div>
+                <h1>Loading Venture Profile...</h1>
                 <p class="author-tag">Initiated by <strong></strong></p>
             </header>
 
@@ -36,8 +42,7 @@
 
             <section class="project-milestones">
                 <h2>Exosphere Milestones</h2>
-                <ul class="milestone-list">
-                </ul>
+                <ul class="milestone-list"></ul>
             </section>
         </div>
 
@@ -47,24 +52,21 @@
                 <p class="sidebar-instructions">The author is actively seeking contributors with the following skills:
                 </p>
 
-                <div class="sidebar-roles">
-                </div>
+                <div class="sidebar-roles"></div>
 
                 <hr class="sidebar-divider">
 
                 <form id="join-project-form">
                     <label for="apply-note" class="form-label">Why do you want to collaborate?</label>
                     <textarea id="apply-note" class="form-textarea"
-                        placeholder="Describe what you bring to the table..." required></textarea>
-
+                        placeholder="Describe your background and interests..." required></textarea>
                     <button type="submit" class="btn-primary btn-block">Send Collaboration Request</button>
                 </form>
             </div>
 
             <div class="sidebar-card team-card">
                 <h3>Current Exosphere Team</h3>
-                <ul class="team-list">
-                </ul>
+                <ul class="team-list"></ul>
             </div>
         </aside>
 
