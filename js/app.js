@@ -120,8 +120,8 @@ function renderProjectGrid(projects) {
                 <div class="card-progress-bar"></div>
                 
                 <div class="card-footer-layout">
-                    <span class="contributor-count">👥 <strong>${project.contributors}</strong> backend slots</span>
-                    <button class="btn-secondary open-collab-trigger" style="padding: 0.4rem 1rem; font-size: 0.8rem;">Join Team</button>
+                    <span class="contributor-count">👥 <strong>${project.contributors}</strong></span>
+                    <button class="btn-secondary open-collab-trigger" style="padding: 0.4rem 1rem; font-size: 0.8rem;">Join</button>
                 </div>
             </div>
         `;
