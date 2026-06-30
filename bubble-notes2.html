@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bubble Notes</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#12131f;
+  font-family:-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif;
+  overflow:hidden; height:100vh; width:100vw;
+  user-select:none; touch-action:manipulation;
+}
+canvas#main { position:fixed; inset:0; z-index:1; }
+
+#portal {
+  position:fixed; inset:0; z-index:50; pointer-events:none; opacity:0;
+}
+#portal.zooming {
+  animation:portalZoom 0.75s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+#portal.zooming-out {
+  animation:portalZoomOut 0.5s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+@keyframes portalZoom {
+  0%   { opacity:0; backdrop-filter:blur(0px) brightness(1) saturate(1); transform:scale(1); }
+  20%  { opacity:1; backdrop-filter:blur(2px) brightness(1.6) saturate(1.4); }
+  100% { opacity:0; backdrop-filter:blur(80px) brightness(3) saturate(2); transform:scale(7); }
+}
+@keyframes portalZoomOut {
+  0%   { opacity:0; backdrop-filter:blur(60px); transform:scale(3); }
+  40%  { opacity:1; backdrop-filter:blur(4px); transform:scale(1); }
+  100% { opacity:0; backdrop-filter:blur(0px); transform:scale(1); }
+}
+
+#ui { position:fixed; inset:0; z-index:10; pointer-events:none; }
+
+/* ── Back button — pill style like Apple Settings ── */
+#back-btn {
+  position:absolute; top:52px; left:20px;
+  height:34px; padding:0 14px 0 10px;
+  border-radius:100px;
+  border:none;
+  background:rgba(255,255,255,0.10);
+  backdrop-filter:blur(30px) saturate(1.8);
+  -webkit-backdrop-filter:blur(30px) saturate(1.8);
+  display:flex; align-items:center; gap:4px;
+  cursor:pointer; pointer-events:all;
+  color:rgba(255,255,255,0.82);
+  font-size:15px; font-weight:500;
+  letter-spacing:-0.01em;
+  opacity:0; transform:translateX(-8px);
+  transition:opacity 0.35s cubic-bezier(0.22,1,0.36,1),
+             transform 0.35s cubic-bezier(0.22,1,0.36,1),
+             background 0.15s;
+}
+#back-btn::before { content:'‹'; font-size:20px; font-weight:300; line-height:1; margin-top:-1px; }
+#back-btn.show { opacity:1; transform:translateX(0); }
+#back-btn:hover { background:rgba(255,255,255,0.16); color:#fff; }
+#back-btn:active { background:rgba(255,255,255,0.08); transform:scale(0.96); }
+
+/* ── Breadcrumb — centered, SF style ── */
+#breadcrumb {
+  position:absolute; top:56px; left:50%; transform:translateX(-50%);
+  display:flex; align-items:center; gap:6px;
+  font-size:13px; font-weight:500;
+  color:rgba(255,255,255,0.32); pointer-events:all; white-space:nowrap;
+}
+#breadcrumb span { cursor:pointer; transition:color 0.2s; padding:3px 0; }
+#breadcrumb span:hover { color:rgba(255,255,255,0.7); }
+#breadcrumb span.active { color:rgba(255,255,255,0.88); font-weight:600; }
+#breadcrumb .sep { color:rgba(255,255,255,0.14); pointer-events:none; font-size:11px; }
+
+/* ── Hint pill at bottom ── */
+/* ── Milestone bar ── */
+#milestone-bar {
+  position:absolute;
+  top:108px;
+  left:50%;
+  transform:translateX(-50%);
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 0.4s cubic-bezier(0.22,1,0.36,1);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:0;
+  white-space:nowrap;
+}
+#milestone-bar.visible { opacity:1; }
+#milestone-bar canvas {
+  display:block;
+}
+
+#hint {
+  position:absolute; bottom:40px; left:50%; transform:translateX(-50%);
+  font-size:12px; font-weight:500; letter-spacing:0.01em;
+  color:rgba(255,255,255,0.28);
+  background:rgba(255,255,255,0.07);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.09);
+  padding:7px 16px; border-radius:100px;
+  white-space:nowrap; transition:opacity 0.4s;
+}
+
+/* ── PERSON DETAIL PANEL ── */
+#person-panel {
+  position:fixed; inset:0; z-index:60;
+  display:flex; align-items:flex-end; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity 0.4s;
+}
+#person-panel.open { opacity:1; pointer-events:all; }
+#person-scrim {
+  position:absolute; inset:0;
+  background:rgba(8,8,18,0.6);
+  backdrop-filter:blur(28px) saturate(1.5);
+  -webkit-backdrop-filter:blur(28px) saturate(1.5);
+  cursor:pointer;
+}
+#person-sheet {
+  position:relative; z-index:1;
+  width:min(600px,100vw); height:78vh;
+  background:rgba(18,18,28,0.97);
+  border:1px solid rgba(255,255,255,0.09); border-bottom:none;
+  border-radius:22px 22px 0 0;
+  backdrop-filter:blur(60px); -webkit-backdrop-filter:blur(60px);
+  overflow:hidden;
+  transform:translateY(110%); transition:transform 0.55s cubic-bezier(0.22,1,0.36,1);
+  box-shadow:0 -1px 0 rgba(255,255,255,0.06), 0 -20px 80px rgba(0,0,0,0.5);
+  display:flex; flex-direction:column;
+}
+#person-panel.open #person-sheet { transform:translateY(0); }
+
+#person-header {
+  padding:16px 20px 14px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  flex-shrink:0; display:flex; align-items:center; gap:12px;
+}
+#person-handle {
+  width:32px; height:4px; border-radius:2px;
+  background:rgba(255,255,255,0.12); margin:0 auto 14px;
+}
+.person-avatar-sm {
+  width:40px; height:40px; border-radius:50%;
+  border:1.5px solid rgba(255,255,255,0.15);
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700; color:rgba(255,255,255,0.9);
+  flex-shrink:0;
+}
+#person-info { flex:1; }
+#person-name-sm { font-size:16px; font-weight:650; letter-spacing:-0.01em; color:rgba(255,255,255,0.92); }
+#person-role-sm { font-size:11px; font-weight:500; letter-spacing:0.02em; color:rgba(255,255,255,0.3); margin-top:2px; }
+.live-pill {
+  display:flex; align-items:center; gap:5px;
+  padding:5px 12px; border-radius:100px;
+  background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25);
+  font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase;
+  color:#22c55e;
+}
+.live-dot { width:5px; height:5px; border-radius:50%; background:#22c55e; animation:livePulse 1.4s ease-in-out infinite; }
+@keyframes livePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.35;transform:scale(0.65)} }
+
+#stream-container {
+  flex:1; position:relative; overflow:hidden;
+}
+#stream-canvas-el {
+  position:absolute; inset:0; width:100%; height:100%;
+}
+
+#notes-section {
+  flex-shrink:0; max-height:220px; overflow-y:auto;
+  padding:16px 24px 32px;
+  border-top:1px solid rgba(255,255,255,0.07);
+}
+#notes-section-title {
+  font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+  color:rgba(255,255,255,0.22); margin-bottom:12px;
+}
+.note-item { padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+.note-item:last-child { border-bottom:none; }
+.note-time { font-size:10px; letter-spacing:0.07em; text-transform:uppercase; color:rgba(255,255,255,0.18); margin-bottom:6px; }
+.note-text { font-size:14px; line-height:1.6; color:rgba(255,255,255,0.6); }
+</style>
+</head>
+<body>
+<canvas id="main"></canvas>
+<div id="portal"></div>
+
+<div id="ui">
+  <div id="back-btn" onclick="goBack()">Back</div>
+  <div id="breadcrumb"></div>
+  <div id="milestone-bar"></div>
+  <div id="hint"></div>
+</div>
+
+<!-- Person detail panel with live stream -->
+<div id="person-panel">
+  <div id="person-scrim" onclick="closePanel()"></div>
+  <div id="person-sheet">
+    <div id="person-header">
+      <div class="person-avatar-sm" id="panel-avatar"></div>
+      <div id="person-info">
+        <div id="person-name-sm"></div>
+        <div id="person-role-sm"></div>
+      </div>
+      <div class="live-pill"><div class="live-dot"></div>Live</div>
+    </div>
+    <div id="stream-container">
+      <canvas id="stream-canvas-el"></canvas>
+    </div>
+    <div id="notes-section">
+      <div id="notes-section-title">Recent Notes</div>
+      <div id="notes-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════
+const DATA = {
+  projects:[
+    { id:'p1', name:'Brand Refresh', sub:'3 teams',
+      milestones:[
+        {label:'Discovery',done:true, size:1.0},
+        {label:'Strategy', done:true, size:0.75},
+        {label:'Design',   done:true, size:1.0},
+        {label:'Build',    done:false,size:0.75},
+        {label:'Launch',   done:false,size:1.0},
+      ], teams:[
+      { id:'t1', name:'Design', sub:'4 people', people:[
+        {id:'u1',name:'Maya',role:'Lead Designer',stream:'figma',
+         notes:[{time:'Today 11:42am',text:'Finalized the color system. Cooler neutral base — ditching the warm grays.'},{time:'Yesterday',text:'Logo lockup sent to Marcus. He liked v3 on dark.'}]},
+        {id:'u2',name:'Jordan',role:'Motion',stream:'code',
+         notes:[{time:'Today 9:15am',text:'Transition system at 400ms feels right.'},{time:'Mon',text:'Reference from Vercel and Linear for micro-interactions.'}]},
+        {id:'u3',name:'Sam',role:'Typography',stream:'browser',
+         notes:[{time:'Today',text:'Switching to Instrument Serif — weight without feeling corporate.'}]},
+        {id:'u4',name:'Riley',role:'Illustration',stream:'illustrator',
+         notes:[{time:'Yesterday',text:'Icon set 80% done. Feedback on outline weight at small sizes.'}]},
+      ]},
+      { id:'t2', name:'Strategy', sub:'3 people', people:[
+        {id:'u5',name:'Marcus',role:'Brand Strategist',stream:'slides',
+         notes:[{time:'Today 2pm',text:'Positioning locked. "Precision without pretense" as voice anchor.'}]},
+        {id:'u6',name:'Priya',role:'Research',stream:'data',
+         notes:[{time:'Today 10am',text:"Competitive audit done. Confident minimalism is our gap."},{time:'Last week',text:'12 interviews. 3 core insight clusters.'}]},
+        {id:'u7',name:'Owen',role:'Copywriter',stream:'notion',
+         notes:[{time:'Today',text:'"Built to disappear" — controversial tagline but it\'s right.'}]},
+      ]},
+      { id:'t3', name:'Engineering', sub:'3 people', people:[
+        {id:'u8',name:'Nadia',role:'Frontend Lead',stream:'code',
+         notes:[{time:'Today 3pm',text:'Design tokens exported — integration starts tomorrow.'},{time:'Mon',text:'CSS custom properties over JS theme. Cleaner.'}]},
+        {id:'u9',name:'Leo',role:'Dev',stream:'terminal',
+         notes:[{time:'Yesterday',text:'Animation pass done. Cut 8 reflows. Butter smooth on mobile.'}]},
+        {id:'u10',name:'Cass',role:'Dev',stream:'browser',
+         notes:[{time:'Today',text:'A11y audit — fixing contrast and keyboard nav on modal.'}]},
+      ]},
+    ]},
+    { id:'p2', name:'Product Launch', sub:'2 teams',
+      milestones:[
+        {label:'Research', done:true, size:0.75},
+        {label:'Brief',    done:true, size:1.0},
+        {label:'Creative', done:true, size:0.75},
+        {label:'Go Live',  done:false,size:1.0},
+        {label:'Sustain',  done:false,size:0.75},
+      ], teams:[
+      { id:'t4', name:'Marketing', sub:'3 people', people:[
+        {id:'u11',name:'Zoe',role:'Campaign Lead',stream:'slides',
+         notes:[{time:'Today',text:'Three-phase: tease, announce, sustain. Tease in 10 days.'}]},
+        {id:'u12',name:'Kai',role:'Paid Media',stream:'data',
+         notes:[{time:'Today 11am',text:'Video 3x CTR vs static. Meta and TikTok handed off.'}]},
+        {id:'u13',name:'Aria',role:'Content',stream:'notion',
+         notes:[{time:'Yesterday',text:'Blog posts scheduled. SEO flagged 2 missing links.'}]},
+      ]},
+      { id:'t5', name:'Operations', sub:'2 people', people:[
+        {id:'u14',name:'Dev',role:'Ops Lead',stream:'data',
+         notes:[{time:'Today',text:'47 checklist items. 34 done. On track for Thursday.'}]},
+        {id:'u15',name:'Mira',role:'Support Lead',stream:'browser',
+         notes:[{time:'Today 9am',text:'Scripts written. Team trained on top 10 questions.'}]},
+      ]},
+    ]},
+    { id:'p3', name:'Research Hub', sub:'2 teams',
+      milestones:[
+        {label:'Recruit',  done:true, size:0.75},
+        {label:'Fieldwork',done:true, size:1.0},
+        {label:'Synthesis',done:false,size:0.75},
+        {label:'Report',   done:false,size:1.0},
+      ], teams:[
+      { id:'t6', name:'User Research', sub:'3 people', people:[
+        {id:'u16',name:'Finn',role:'UX Researcher',stream:'figma',
+         notes:[{time:'Today',text:'Drop-off at step 3 onboarding — too much asked upfront.'}]},
+        {id:'u17',name:'Lena',role:'Data Analyst',stream:'data',
+         notes:[{time:'Today 1pm',text:'Week-2 retention drops 40% without trigger email.'}]},
+        {id:'u18',name:'Theo',role:'Researcher',stream:'notion',
+         notes:[{time:'Yesterday',text:'Users want confidence, not features.'}]},
+      ]},
+      { id:'t7', name:'Data Science', sub:'2 people', people:[
+        {id:'u19',name:'Ines',role:'ML Engineer',stream:'terminal',
+         notes:[{time:'Today',text:'Model v2 hits 94.2% on validation. Staging tomorrow.'}]},
+        {id:'u20',name:'Ryo',role:'Data Engineer',stream:'code',
+         notes:[{time:'Today 10:30am',text:'ETL in 8 mins vs 34 mins. Pipeline refactor done.'}]},
+      ]},
+    ]},
+  ]
+};
+
+const COLORS=[
+  [180,200,255],[210,185,255],[255,205,180],[170,240,200],
+  [255,185,205],[195,238,255],[255,230,175],[185,255,215],
+];
+
+// ════════════════════════════════════════
+// CANVAS SETUP
+// ════════════════════════════════════════
+const canvas=document.getElementById('main');
+const ctx=canvas.getContext('2d');
+let W,H,dpr;
+function resize(){
+  dpr=window.devicePixelRatio||1;
+  W=window.innerWidth; H=window.innerHeight;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.scale(dpr,dpr);
+}
+resize();
+window.addEventListener('resize',()=>{ resize(); rebuildScene(); });
+
+let T=0, level=0, currentProject=null, currentTeam=null;
+let bubbles=[], stars=[], bgBlobs=[], transitioning=false;
+let mouseX=-999, mouseY=-999;
+
+// ════════════════════════════════════════
+// STREAM RENDERERS
+// ════════════════════════════════════════
+const STREAMS = {
+  code:(c,x,y,w,h,t)=>{
+    c.fillStyle='#0d1117'; c.fillRect(x,y,w,h);
+    c.fillStyle='#161b22'; c.fillRect(x,y,w*0.1,h);
+    const lines=[
+      {col:'#ff7b72',txt:'const handleZoom = async (e) => {'},
+      {col:'#8b949e',txt:'  // Spring animation into level'},
+      {col:'#79c0ff',txt:'  await portal.animate({'},
+      {col:'#a5d6ff',txt:"    scale: 8, blur: '60px',"},
+      {col:'#ffa657',txt:"    duration: 680,"},
+      {col:'#a5d6ff',txt:"    easing: 'cubic-bezier(0.22,1,0.36,1)'"},
+      {col:'#c9d1d9',txt:'  });'},
+      {col:'#ff7b72',txt:'  const next = await loadLevel('},
+      {col:'#79c0ff',txt:'    current.level + 1'},
+      {col:'#c9d1d9',txt:'  );'},
+      {col:'#50fa7b',txt:'  renderBubbles(next.data);'},
+      {col:'#c9d1d9',txt:'}'},
+      {col:'#8b949e',txt:''},
+      {col:'#ff7b72',txt:'function blobPoints(cx, cy, r) {'},
+      {col:'#c9d1d9',txt:'  return harmonics.map((h,i) => {'},
+      {col:'#a5d6ff',txt:'    const warp = h.amp *'},
+      {col:'#a5d6ff',txt:'      Math.sin(h.freq*angle + T);'},
+    ];
+    const lh=h*0.054; const cursor=Math.floor(t*0.025)%lines.length;
+    lines.forEach((l,i)=>{
+      const ly=y+h*0.04+i*lh;
+      c.font=`${Math.max(9,lh*0.7)}px monospace`;
+      c.fillStyle='#30363d'; c.textAlign='right';
+      c.fillText(i+1, x+w*0.08, ly+lh*0.75);
+      c.textAlign='left'; c.fillStyle=l.col;
+      const maxChars=Math.floor(w*0.055);
+      c.fillText(l.txt.slice(0,maxChars), x+w*0.12, ly+lh*0.75);
+      if(i===cursor && Math.floor(t*0.06)%2===0){
+        const tw=c.measureText(l.txt.slice(0,Math.min(maxChars,Math.floor((t*0.04)%Math.max(1,l.txt.length+1))))).width;
+        c.fillStyle='rgba(80,250,123,0.9)';
+        c.fillRect(x+w*0.12+tw, ly+lh*0.08, 2, lh*0.82);
+      }
+    });
+    const sp=(Math.sin(t*0.006)+1)/2;
+    c.fillStyle='#21262d'; c.fillRect(x+w-5,y,5,h);
+    c.fillStyle='#30363d'; c.fillRect(x+w-4, y+h*sp*0.75, 3, h*0.18);
+  },
+
+  terminal:(c,x,y,w,h,t)=>{
+    c.fillStyle='#0a0e14'; c.fillRect(x,y,w,h);
+    c.fillStyle='#1c2030'; c.fillRect(x,y,w,h*0.08);
+    c.fillStyle='#ff5f57'; c.beginPath(); c.arc(x+w*0.055,y+h*0.04,h*0.018,0,Math.PI*2); c.fill();
+    c.fillStyle='#febc2e'; c.beginPath(); c.arc(x+w*0.105,y+h*0.04,h*0.018,0,Math.PI*2); c.fill();
+    c.fillStyle='#28c840'; c.beginPath(); c.arc(x+w*0.155,y+h*0.04,h*0.018,0,Math.PI*2); c.fill();
+    c.font=`${h*0.032}px monospace`; c.fillStyle='#8b949e'; c.textAlign='center';
+    c.fillText('zsh — 120×38', x+w*0.5, y+h*0.052);
+    const cmds=[
+      {p:'➜ ',pc:'#50fa7b',cmd:'~ git status',cc:'#f8f8f2'},
+      {p:'',pc:'#8b949e',cmd:'On branch main — nothing to commit',cc:'#8b949e'},
+      {p:'➜ ',pc:'#50fa7b',cmd:'~ npm run dev',cc:'#f8f8f2'},
+      {p:'>',pc:'#8b949e',cmd:' Starting dev server...',cc:'#6272a4'},
+      {p:'',pc:'#50fa7b',cmd:'✓  Ready on http://localhost:3000',cc:'#50fa7b'},
+      {p:'',pc:'#ffb86c',cmd:'  HMR connected • watching 84 files',cc:'#ffb86c'},
+      {p:'➜ ',pc:'#50fa7b',cmd:'~ git add -A && git commit -m',cc:'#f8f8f2'},
+      {p:'',pc:'#a5d6ff',cmd:'"feat: liquid glass bubble morphing"',cc:'#a5d6ff'},
+      {p:'',pc:'#50fa7b',cmd:'[main 3f8a21d] feat: liquid glass',cc:'#50fa7b'},
+      {p:'',pc:'#8b949e',cmd:' 4 files changed, 312 insertions',cc:'#8b949e'},
+      {p:'➜ ',pc:'#50fa7b',cmd:'~ git push origin main',cc:'#f8f8f2'},
+      {p:'',pc:'#ffb86c',cmd:'  Enumerating objects: 14 done.',cc:'#ffb86c'},
+      {p:'',pc:'#50fa7b',cmd:'✓  Branch main is up to date',cc:'#50fa7b'},
+      {p:'➜ ',pc:'#50fa7b',cmd:'~ ',cc:'#f8f8f2'},
+    ];
+    const lh=h*0.057; const show=Math.min(cmds.length,Math.floor(t*0.008)+1);
+    c.textAlign='left';
+    cmds.slice(0,show).forEach((cmd,i)=>{
+      const ly=y+h*0.1+i*lh;
+      c.font=`bold ${Math.max(9,lh*0.72)}px monospace`;
+      c.fillStyle=cmd.pc; c.fillText(cmd.p,x+w*0.04,ly+lh*0.78);
+      c.fillStyle=cmd.cc; c.font=`${Math.max(9,lh*0.7)}px monospace`;
+      const typed=i===show-1?cmd.cmd.slice(0,Math.floor((t*0.018)%Math.max(1,cmd.cmd.length+1))):cmd.cmd;
+      c.fillText(typed,x+w*0.04+c.measureText(cmd.p).width,ly+lh*0.78);
+    });
+    if(Math.floor(t*0.06)%2===0){
+      const i=show-1; const cmd=cmds[i];
+      const ly=y+h*0.1+i*lh;
+      const typed=cmd.cmd.slice(0,Math.floor((t*0.018)%Math.max(1,cmd.cmd.length+1)));
+      c.font=`${Math.max(9,lh*0.7)}px monospace`;
+      const tw=c.measureText(cmd.p+typed).width;
+      c.fillStyle='rgba(248,248,242,0.85)';
+      c.fillRect(x+w*0.04+tw,ly+lh*0.1,2,lh*0.75);
+    }
+  },
+
+  figma:(c,x,y,w,h,t)=>{
+    c.fillStyle='#1e1e1e'; c.fillRect(x,y,w,h);
+    // toolbar top
+    c.fillStyle='#2c2c2c'; c.fillRect(x,y,w,h*0.07);
+    c.fillStyle='#18a0fb'; c.font=`bold ${h*0.038}px -apple-system,sans-serif`; c.textAlign='center';
+    c.fillText('Figma',x+w*0.5,y+h*0.047);
+    // left panel
+    c.fillStyle='#252525'; c.fillRect(x,y+h*0.07,w*0.2,h*0.93);
+    const layers=['⬡ Frame','  ↳ Nav','  ↳ Hero','  ↳ Cards','  ↳ Footer','○ Button','  ↳ Label'];
+    const selL=Math.floor(t*0.012)%layers.length;
+    c.textAlign='left';
+    layers.forEach((l,i)=>{
+      if(i===selL){ c.fillStyle='rgba(24,160,251,0.22)'; c.fillRect(x,y+h*0.07+i*h*0.075,w*0.2,h*0.075); }
+      c.font=`${h*0.04}px -apple-system,sans-serif`;
+      c.fillStyle=i===selL?'#18a0fb':'#777';
+      c.fillText(l,x+w*0.025,y+h*0.112+i*h*0.075);
+    });
+    // right panel
+    c.fillStyle='#252525'; c.fillRect(x+w*0.78,y+h*0.07,w*0.22,h*0.93);
+    const props=['Width','Height','X','Y','Radius','Opacity'];
+    const vals=['360','64','0','80','12','100%'];
+    props.forEach((p,i)=>{
+      c.font=`${h*0.036}px -apple-system,sans-serif`;
+      c.fillStyle='#666'; c.textAlign='left'; c.fillText(p,x+w*0.8,y+h*0.12+i*h*0.08);
+      c.fillStyle='#ccc'; c.textAlign='right'; c.fillText(vals[i],x+w*0.99,y+h*0.12+i*h*0.08);
+    });
+    // canvas
+    c.fillStyle='#383838'; c.fillRect(x+w*0.2,y+h*0.07,w*0.58,h*0.93);
+    const frame={x:x+w*0.24,y:y+h*0.1,w:w*0.5,h:h*0.86};
+    c.fillStyle='#fff'; c.fillRect(frame.x,frame.y,frame.w,frame.h);
+    // nav bar
+    const hue=210+15*Math.sin(t*0.008);
+    c.fillStyle=`hsl(${hue},85%,54%)`; c.fillRect(frame.x,frame.y,frame.w,frame.h*0.09);
+    c.fillStyle='rgba(255,255,255,0.95)'; c.font=`bold ${frame.h*0.042}px -apple-system,sans-serif`;
+    c.textAlign='left'; c.fillText('BubbleNotes',frame.x+frame.w*0.04,frame.y+frame.h*0.065);
+    // hero
+    c.fillStyle='#f3f4f6'; c.fillRect(frame.x,frame.y+frame.h*0.09,frame.w,frame.h*0.22);
+    c.fillStyle='#111'; c.font=`bold ${frame.h*0.06}px -apple-system,sans-serif`;
+    c.fillText('Collaborate',frame.x+frame.w*0.06,frame.y+frame.h*0.175);
+    c.fillStyle='#555'; c.font=`${frame.h*0.038}px -apple-system,sans-serif`;
+    c.fillText('in living bubbles',frame.x+frame.w*0.06,frame.y+frame.h*0.225);
+    // cards
+    for(let i=0;i<3;i++){
+      const cx2=frame.x+frame.w*0.05+i*(frame.w*0.31);
+      c.fillStyle='#fff'; c.shadowColor='rgba(0,0,0,0.08)'; c.shadowBlur=8;
+      c.beginPath(); c.roundRect(cx2,frame.y+frame.h*0.33,frame.w*0.28,frame.h*0.18,6); c.fill();
+      c.shadowBlur=0;
+      const cc=[`hsl(${hue},70%,60%)`,`hsl(${hue+40},70%,60%)`,`hsl(${hue+80},70%,60%)`][i];
+      c.fillStyle=cc; c.fillRect(cx2,frame.y+frame.h*0.33,frame.w*0.28,frame.h*0.08);
+    }
+    // selection
+    const selCard=Math.floor(t*0.01)%3;
+    const scx=frame.x+frame.w*0.05+selCard*(frame.w*0.31);
+    c.strokeStyle='#18a0fb'; c.lineWidth=1.5;
+    c.strokeRect(scx,frame.y+frame.h*0.33,frame.w*0.28,frame.h*0.18);
+    [[0,0],[0.5,0],[1,0],[0,0.5],[1,0.5],[0,1],[0.5,1],[1,1]].forEach(([hx,hy])=>{
+      const hpx=scx+hx*frame.w*0.28, hpy=frame.y+frame.h*0.33+hy*frame.h*0.18;
+      c.fillStyle='#fff'; c.strokeStyle='#18a0fb'; c.lineWidth=1;
+      c.fillRect(hpx-3,hpy-3,6,6); c.strokeRect(hpx-3,hpy-3,6,6);
+    });
+  },
+
+  browser:(c,x,y,w,h,t)=>{
+    c.fillStyle='#f0f0f0'; c.fillRect(x,y,w,h);
+    c.fillStyle='#e0e0e0'; c.fillRect(x,y,w,h*0.1);
+    c.fillStyle='#ff5f57'; c.beginPath(); c.arc(x+w*0.05,y+h*0.05,h*0.02,0,Math.PI*2); c.fill();
+    c.fillStyle='#febc2e'; c.beginPath(); c.arc(x+w*0.1,y+h*0.05,h*0.02,0,Math.PI*2); c.fill();
+    c.fillStyle='#28c840'; c.beginPath(); c.arc(x+w*0.15,y+h*0.05,h*0.02,0,Math.PI*2); c.fill();
+    c.fillStyle='#fff'; c.beginPath();
+    c.roundRect(x+w*0.22,y+h*0.022,w*0.62,h*0.055,h*0.018); c.fill();
+    c.font=`${h*0.036}px -apple-system,sans-serif`; c.fillStyle='#555'; c.textAlign='left';
+    const urls=['bubblenotes.app/projects','figma.com/file/brand-refresh','notion.so/Brand-Voice-Guide'];
+    c.fillText(urls[Math.floor(t*0.003)%urls.length],x+w*0.25,y+h*0.062);
+    c.fillStyle='#fff'; c.fillRect(x,y+h*0.1,w,h*0.9);
+    const scroll=(t*0.35)%(h*0.5);
+    c.save(); c.beginPath(); c.rect(x,y+h*0.1,w,h*0.9); c.clip();
+    // nav
+    c.fillStyle='rgba(255,255,255,0.96)'; c.fillRect(x,y+h*0.1-scroll*0.05,w,h*0.072);
+    c.font=`bold ${h*0.044}px -apple-system,sans-serif`; c.fillStyle='#111'; c.textAlign='left';
+    c.fillText('BubbleNotes',x+w*0.05,y+h*0.148-scroll*0.05);
+    ['Product','Team','Pricing','Login'].forEach((item,i)=>{
+      c.font=`${h*0.036}px -apple-system,sans-serif`; c.fillStyle='#555';
+      c.fillText(item,x+w*(0.38+i*0.135),y+h*0.148-scroll*0.05);
+    });
+    // hero
+    c.fillStyle='#f9fafb'; c.fillRect(x,y+h*0.17-scroll*0.1,w,h*0.25);
+    c.font=`bold ${h*0.065}px -apple-system,sans-serif`; c.fillStyle='#0a0a0a';
+    c.fillText('Work in bubbles.',x+w*0.06,y+h*0.25-scroll*0.1);
+    c.font=`${h*0.04}px -apple-system,sans-serif`; c.fillStyle='#666';
+    c.fillText('A new way to collaborate with your team.',x+w*0.06,y+h*0.3-scroll*0.1);
+    c.fillStyle='#111'; c.beginPath(); c.roundRect(x+w*0.06,y+h*0.34-scroll*0.1,w*0.22,h*0.055,h*0.018); c.fill();
+    c.fillStyle='#fff'; c.font=`bold ${h*0.036}px -apple-system,sans-serif`;
+    c.textAlign='center'; c.fillText('Get started',x+w*0.17,y+h*0.374-scroll*0.1);
+    c.restore();
+    c.fillStyle='rgba(24,160,251,0.45)'; c.fillRect(x,y,w*(((t*0.012)%1)),2.5);
+  },
+
+  slides:(c,x,y,w,h,t)=>{
+    c.fillStyle='#1a1a2e'; c.fillRect(x,y,w,h);
+    c.fillStyle='#16213e'; c.fillRect(x,y,w*0.18,h);
+    for(let i=0;i<6;i++){
+      const sel=Math.floor(t*0.007)%6===i;
+      if(sel){ c.fillStyle='rgba(99,102,241,0.2)'; c.fillRect(x+2,y+h*0.03+i*h*0.155,w*0.175,h*0.14); }
+      c.fillStyle='#0f3460'; c.fillRect(x+w*0.015,y+h*0.035+i*h*0.155,w*0.15,h*0.12);
+      const hh=210+i*30;
+      c.fillStyle=`hsl(${hh},70%,50%)`; c.fillRect(x+w*0.015,y+h*0.035+i*h*0.155,w*0.15,h*0.045);
+      for(let j=0;j<2;j++){c.fillStyle='rgba(255,255,255,0.12)'; c.fillRect(x+w*0.02,y+h*0.09+i*h*0.155+j*h*0.025,w*0.12,h*0.012);}
+    }
+    // main slide
+    const si=Math.floor(t*0.007)%6;
+    const hue2=210+si*30;
+    c.fillStyle='#0f1b35'; c.fillRect(x+w*0.19,y+h*0.04,w*0.79,h*0.9);
+    c.fillStyle=`hsl(${hue2},70%,38%)`; c.fillRect(x+w*0.19,y+h*0.04,w*0.79,h*0.3);
+    // slide content
+    const titles=['Q3 Brand Strategy','Key Insights','Competitive Landscape','Design Direction','Engineering Plan','Launch Roadmap'];
+    c.font=`bold ${h*0.07}px -apple-system,sans-serif`;
+    c.fillStyle='rgba(255,255,255,0.95)'; c.textAlign='center';
+    c.fillText(titles[si],x+w*0.585,y+h*0.22);
+    const bullets=['→ 3 positioning gaps identified','→ 12 competitor brands audited','→ User resonance score: 8.4/10','→ Launch date: Q4 2026'];
+    c.textAlign='left'; c.font=`${h*0.048}px -apple-system,sans-serif`;
+    bullets.forEach((b,i)=>{
+      const opacity=Math.min(1,(t*0.012-si*1.5-i*0.4));
+      c.fillStyle=`rgba(200,220,255,${Math.max(0,opacity)})`;
+      c.fillText(b,x+w*0.24,y+h*0.45+i*h*0.1);
+    });
+    // presenter laser
+    const lx=x+w*0.35+Math.sin(t*0.016)*w*0.25;
+    const ly2=y+h*0.5+Math.cos(t*0.013)*h*0.2;
+    c.fillStyle='rgba(255,60,60,0.8)';
+    c.beginPath(); c.arc(lx,ly2,h*0.015,0,Math.PI*2); c.fill();
+    c.fillStyle='rgba(255,60,60,0.2)';
+    c.beginPath(); c.arc(lx,ly2,h*0.028,0,Math.PI*2); c.fill();
+    // slide number
+    c.textAlign='right'; c.font=`${h*0.036}px -apple-system,sans-serif`;
+    c.fillStyle='rgba(255,255,255,0.3)';
+    c.fillText(`${si+1} / 6`,x+w*0.97,y+h*0.93);
+  },
+
+  data:(c,x,y,w,h,t)=>{
+    c.fillStyle='#0c0f1a'; c.fillRect(x,y,w,h);
+    c.fillStyle='#111827'; c.fillRect(x,y,w,h*0.09);
+    c.font=`bold ${h*0.05}px -apple-system,sans-serif`; c.fillStyle='#e0e7ff'; c.textAlign='left';
+    c.fillText('Analytics Dashboard',x+w*0.04,y+h*0.062);
+    c.fillStyle='#22c55e'; c.beginPath(); c.arc(x+w*0.84,y+h*0.045,h*0.018,0,Math.PI*2); c.fill();
+    c.fillStyle=`rgba(34,197,94,${0.25+0.2*Math.sin(t*0.08)})`; c.beginPath(); c.arc(x+w*0.84,y+h*0.045,h*0.032*(0.7+0.3*Math.sin(t*0.08)),0,Math.PI*2); c.fill();
+    c.font=`bold ${h*0.04}px -apple-system,sans-serif`; c.fillStyle='#22c55e'; c.fillText('LIVE',x+w*0.87,y+h*0.058);
+    // stat cards
+    const stats=[['54.8%','Booking Rate','↑ 12%'],['26','New Patients','↑ 8'],['62%','MoM Growth','record']];
+    stats.forEach((s,i)=>{
+      const cx2=x+w*0.03+i*(w*0.32);
+      c.fillStyle='#1a2035'; c.beginPath(); c.roundRect(cx2,y+h*0.1,w*0.3,h*0.16,8); c.fill();
+      c.font=`bold ${h*0.075}px -apple-system,sans-serif`; c.fillStyle='#a5b4fc'; c.textAlign='left';
+      c.fillText(s[0],cx2+w*0.025,y+h*0.195);
+      c.font=`${h*0.038}px -apple-system,sans-serif`; c.fillStyle='#4b5563'; c.fillText(s[1],cx2+w*0.025,y+h*0.24);
+      c.font=`bold ${h*0.035}px -apple-system,sans-serif`; c.fillStyle='#34d399'; c.textAlign='right';
+      c.fillText(s[2],cx2+w*0.28,y+h*0.195);
+    });
+    // main chart
+    const ch={x:x+w*0.03,y:y+h*0.3,w:w*0.94,h:h*0.36};
+    c.fillStyle='#111827'; c.beginPath(); c.roundRect(ch.x,ch.y,ch.w,ch.h,8); c.fill();
+    c.font=`${h*0.035}px -apple-system,sans-serif`; c.fillStyle='#6b7280'; c.textAlign='left';
+    c.fillText('Weekly Sessions',ch.x+w*0.03,ch.y+h*0.05);
+    for(let i=0;i<=4;i++){
+      const gy=ch.y+ch.h*0.15+i*(ch.h*0.7/4);
+      c.beginPath(); c.moveTo(ch.x+w*0.02,gy); c.lineTo(ch.x+ch.w-w*0.02,gy);
+      c.strokeStyle='rgba(255,255,255,0.05)'; c.lineWidth=1; c.stroke();
+    }
+    // multi-line chart
+    const lines2=[
+      {color:'#6366f1',off:0},{color:'#22d3ee',off:0.5},{color:'#f472b6',off:1.2},
+    ];
+    lines2.forEach(({color,off})=>{
+      c.beginPath(); c.strokeStyle=color; c.lineWidth=2;
+      for(let i=0;i<=50;i++){
+        const px2=ch.x+w*0.03+i/50*(ch.w-w*0.05);
+        const wave=Math.sin(i*0.35+t*0.02+off)*0.22+Math.sin(i*0.12+t*0.011+off)*0.28+Math.cos(i*0.55+t*0.016+off)*0.12;
+        const py2=ch.y+ch.h*0.55-ch.h*0.38*wave;
+        i===0?c.moveTo(px2,py2):c.lineTo(px2,py2);
+      }
+      c.stroke();
+    });
+    // bar chart
+    const bch={x:x+w*0.03,y:y+h*0.7,w:w*0.94,h:h*0.27};
+    c.fillStyle='#111827'; c.beginPath(); c.roundRect(bch.x,bch.y,bch.w,bch.h,8); c.fill();
+    const bars=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const bvals=[0.6,0.75,0.9,0.55,0.85,0.4,0.3];
+    const barW=bch.w/bars.length*0.55;
+    bars.forEach((label,i)=>{
+      const bx=bch.x+bch.w*(i+0.5)/bars.length-barW/2;
+      const bh2=bch.h*0.6*bvals[i]*(0.85+0.15*Math.sin(t*0.04+i));
+      const by=bch.y+bch.h*0.8-bh2;
+      c.fillStyle=`hsl(${240+i*15},70%,${50+i*3}%)`;
+      c.beginPath(); c.roundRect(bx,by,barW,bh2,3); c.fill();
+      c.font=`${h*0.032}px -apple-system,sans-serif`; c.fillStyle='#4b5563'; c.textAlign='center';
+      c.fillText(label,bx+barW/2,bch.y+bch.h*0.94);
+    });
+  },
+
+  notion:(c,x,y,w,h,t)=>{
+    c.fillStyle='#ffffff'; c.fillRect(x,y,w,h);
+    c.fillStyle='#f7f7f5'; c.fillRect(x,y,w*0.26,h);
+    const pages=['📋 Brand Voice','📊 Research','✍️ Copy Drafts','🗂 Archive','💡 Ideas','📅 Timeline'];
+    const selP=Math.floor(t*0.006)%pages.length;
+    c.textAlign='left';
+    pages.forEach((p,i)=>{
+      if(i===selP){ c.fillStyle='rgba(0,0,0,0.07)'; c.fillRect(x,y+h*0.1+i*h*0.085,w*0.26,h*0.085); }
+      c.font=`${h*0.044}px -apple-system,sans-serif`;
+      c.fillStyle=i===selP?'#111':'#888';
+      c.fillText(p,x+w*0.03,y+h*0.15+i*h*0.085);
+    });
+    const cx2=x+w*0.29;
+    c.font=`bold ${h*0.068}px -apple-system,sans-serif`; c.fillStyle='#111';
+    const docTitles=['Brand Voice Guide','Research Synthesis','Copy Drafts v4'];
+    c.fillText(docTitles[selP%3],cx2,y+h*0.1);
+    c.fillStyle='#999'; c.font=`${h*0.036}px -apple-system,sans-serif`;
+    c.fillText('Edited just now · 3 collaborators',cx2,y+h*0.14);
+    // body text blocks
+    const lineData=[
+      [h*0.18,w*0.6,'#222',h*0.028],[h*0.22,w*0.5,'#444',h*0.022],
+      [h*0.26,w*0.55,'#444',h*0.022],[h*0.31,w*0.45,'#666',h*0.02],
+      [h*0.35,w*0.58,'#444',h*0.022],[h*0.39,w*0.42,'#666',h*0.02],
+      [h*0.44,w*0.5,'#444',h*0.022],[h*0.49,w*0.35,'#666',h*0.02],
+    ];
+    const shown=Math.min(lineData.length,Math.floor(t*0.009));
+    lineData.slice(0,shown).forEach(([ry,rw2,fc,fh])=>{
+      c.fillStyle=fc; c.fillRect(cx2,y+ry,rw2*0.67,fh);
+    });
+    if(shown<lineData.length && Math.floor(t*0.05)%2===0){
+      const ll=lineData[shown];
+      c.fillStyle='#111'; c.fillRect(cx2,y+ll[0],2,ll[3]*1.2);
+    }
+    // callout
+    c.fillStyle='#eff6ff'; c.beginPath(); c.roundRect(cx2,y+h*0.55,w*0.67,h*0.15,8); c.fill();
+    c.fillStyle='#3b82f6'; c.fillRect(cx2,y+h*0.55,3,h*0.15);
+    c.font=`${h*0.042}px -apple-system,sans-serif`; c.fillStyle='#1d4ed8';
+    c.fillText('💡 Key: users want confidence, not features',cx2+w*0.04,y+h*0.615);
+    c.fillStyle='#3b82f6'; c.font=`${h*0.036}px -apple-system,sans-serif`;
+    c.fillText('→ Reframe all copy around outcomes',cx2+w*0.04,y+h*0.66);
+    // table
+    const th2=y+h*0.73; const cols=['Metric','Before','After','Δ'];
+    const rows=[['Booking Rate','32%','54.8%','+71%'],['New Patients','16','26','+63%'],['Sessions','240','387','+61%']];
+    c.fillStyle='#f3f4f6'; c.fillRect(cx2,th2,w*0.67,h*0.04);
+    cols.forEach((col,i)=>{
+      c.font=`bold ${h*0.035}px -apple-system,sans-serif`; c.fillStyle='#374151';
+      c.fillText(col,cx2+i*w*0.165+w*0.01,th2+h*0.028);
+    });
+    rows.forEach((row,ri)=>{
+      c.fillStyle=ri%2?'#fafafa':'#fff'; c.fillRect(cx2,th2+h*0.04*(ri+1),w*0.67,h*0.04);
+      row.forEach((cell,ci)=>{
+        c.font=`${h*0.034}px -apple-system,sans-serif`;
+        c.fillStyle=ci===3?'#16a34a':'#374151';
+        c.fillText(cell,cx2+ci*w*0.165+w*0.01,th2+h*0.04*(ri+1)+h*0.028);
+      });
+    });
+  },
+
+  illustrator:(c,x,y,w,h,t)=>{
+    c.fillStyle='#1e1e1e'; c.fillRect(x,y,w,h);
+    c.fillStyle='#2a2a2a'; c.fillRect(x,y,w,h*0.07);
+    c.fillStyle='#e8a020'; c.font=`bold ${h*0.04}px -apple-system,sans-serif`; c.textAlign='center';
+    c.fillText('Adobe Illustrator',x+w*0.5,y+h*0.047);
+    c.fillStyle='#1a1a1a'; c.fillRect(x,y+h*0.07,w*0.1,h*0.93);
+    const tools=['▲','⬡','○','✎','✂','⬜','🔍','✋'];
+    tools.forEach((tool,i)=>{
+      c.font=`${h*0.048}px sans-serif`; c.fillStyle=i===2?'#ff7043':'#888'; c.textAlign='center';
+      c.fillText(tool,x+w*0.05,y+h*0.115+i*h*0.1);
+    });
+    c.fillStyle='#fff'; c.fillRect(x+w*0.11,y+h*0.07,w*0.89,h*0.93);
+    c.fillStyle='#f0f0f0'; c.fillRect(x+w*0.18,y+h*0.11,w*0.74,h*0.84);
+    const progress=(t*0.006)%1;
+    const cxI=x+w*0.55, cyI=y+h*0.53;
+    // animated vector shape
+    const pts2=8;
+    c.save();
+    c.beginPath();
+    for(let i=0;i<=pts2;i++){
+      const ang=(i/pts2)*Math.PI*2-Math.PI/2;
+      const rOuter=h*0.19*(0.4+0.6*Math.min(1,progress*1.5));
+      const rInner=h*0.09*(0.4+0.6*Math.min(1,progress*1.5));
+      const r2=i%2===0?rOuter:rInner;
+      const px3=cxI+Math.cos(ang+t*0.004)*r2;
+      const py3=cyI+Math.sin(ang+t*0.004)*r2;
+      i===0?c.moveTo(px3,py3):c.lineTo(px3,py3);
+    }
+    c.closePath();
+    c.strokeStyle='#ff7043'; c.lineWidth=2; c.stroke();
+    c.fillStyle=`rgba(255,112,67,${progress*0.22})`; c.fill();
+    c.restore();
+    // gradient overlapping circle
+    const gI=c.createRadialGradient(cxI-h*0.06,cyI-h*0.08,0,cxI,cyI,h*0.14);
+    gI.addColorStop(0,'rgba(255,183,77,0.7)'); gI.addColorStop(1,'rgba(255,183,77,0)');
+    c.beginPath(); c.arc(cxI-h*0.04,cyI-h*0.05,h*0.12*progress,0,Math.PI*2); c.fillStyle=gI; c.fill();
+    if(progress>0.4){
+      c.strokeStyle='rgba(24,160,251,0.6)'; c.lineWidth=1; c.setLineDash([4,4]);
+      c.strokeRect(cxI-h*0.22,cyI-h*0.22,h*0.44,h*0.44); c.setLineDash([]);
+    }
+    // color palette
+    ['#ff7043','#ff9800','#ffc107','#8bc34a','#2196f3','#9c27b0','#ffffff','#000000'].forEach((col,i)=>{
+      c.fillStyle=col; c.fillRect(x+w*0.12+i*w*0.1,y+h*0.97-h*0.038,w*0.095,h*0.032);
+    });
+  },
+};
+
+// ════════════════════════════════════════
+// CRYSTAL GLASS BUBBLE RENDERER
+// ════════════════════════════════════════
+function blobPoints(cx,cy,r,harmonics,t,nPts=90){
+  const pts=[];
+  for(let i=0;i<nPts;i++){
+    const angle=(i/nPts)*Math.PI*2;
+    let warp=0;
+    for(const h of harmonics) warp+=h.amp*Math.sin(h.freq*angle+h.phase+t*h.speed);
+    pts.push({x:cx+Math.cos(angle)*(r+warp), y:cy+Math.sin(angle)*(r+warp)});
+  }
+  return pts;
+}
+function drawBlobPath(pts){
+  if(pts.length<3) return;
+  const n=pts.length;
+  ctx.beginPath();
+  ctx.moveTo((pts[0].x+pts[1].x)/2,(pts[0].y+pts[1].y)/2);
+  for(let i=0;i<n;i++){
+    const p0=pts[i], p1=pts[(i+1)%n];
+    ctx.quadraticCurveTo(p0.x,p0.y,(p0.x+p1.x)/2,(p0.y+p1.y)/2);
+  }
+  ctx.closePath();
+}
+function pointInBlob(px,py,pts){
+  let inside=false; const n=pts.length;
+  for(let i=0,j=n-1;i<n;j=i++){
+    const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y;
+    if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+
+function drawCrystalBubble(cx, cy, r, color, t, hover, isPerson, streamCanvas) {
+  const [cr,cg,cb]=color;
+  const hoverScale = 1 + hover*0.055;
+  const R = r * hoverScale;
+
+  ctx.save();
+
+  // ── 1. Outer diffuse glow ──
+  const glow=ctx.createRadialGradient(cx,cy,R*0.5,cx,cy,R*2.2);
+  glow.addColorStop(0,`rgba(${cr},${cg},${cb},${0.05+hover*0.06})`);
+  glow.addColorStop(1,`rgba(${cr},${cg},${cb},0)`);
+  ctx.beginPath(); ctx.arc(cx,cy,R*2.2,0,Math.PI*2);
+  ctx.fillStyle=glow; ctx.fill();
+
+  // ── 2. Clip to sphere ──
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.clip();
+
+  // ── 3. Stream content inside ──
+  if(isPerson && streamCanvas){
+    ctx.save();
+    // slightly darken for glass over-content
+    ctx.drawImage(streamCanvas, cx-R, cy-R, R*2, R*2);
+    ctx.restore();
+  } else {
+    // base crystal tint — very transparent
+    const base=ctx.createRadialGradient(cx-R*0.15,cy-R*0.2,0,cx,cy,R);
+    base.addColorStop(0,`rgba(${cr},${cg},${cb},0.22)`);
+    base.addColorStop(0.6,`rgba(${cr},${cg},${cb},0.06)`);
+    base.addColorStop(1,`rgba(${cr},${cg},${cb},0.18)`);
+    ctx.fillStyle=base; ctx.fillRect(cx-R,cy-R,R*2,R*2);
+  }
+
+  // ── 4. Glass dark vignette over content ──
+  const vig=ctx.createRadialGradient(cx,cy,R*0.2,cx,cy,R);
+  vig.addColorStop(0,'rgba(0,0,0,0)');
+  vig.addColorStop(0.65,'rgba(0,0,0,0.04)');
+  vig.addColorStop(1,'rgba(0,0,0,0.42)');
+  ctx.fillStyle=vig; ctx.fillRect(cx-R,cy-R,R*2,R*2);
+
+  // ── 5. Prismatic rainbow edge refraction ──
+  // Rainbow band along the bottom-left edge — matches reference
+  const rainbowAngles=[
+    {a:0.55*Math.PI, color:'rgba(255,100,100,0.28)'},
+    {a:0.6*Math.PI,  color:'rgba(255,180,80,0.22)'},
+    {a:0.65*Math.PI, color:'rgba(255,255,100,0.18)'},
+    {a:0.7*Math.PI,  color:'rgba(100,255,130,0.18)'},
+    {a:0.75*Math.PI, color:'rgba(80,180,255,0.22)'},
+    {a:0.8*Math.PI,  color:'rgba(160,80,255,0.25)'},
+  ];
+  rainbowAngles.forEach(({a,color:rc})=>{
+    const rx=cx+Math.cos(a)*R*0.78, ry=cy+Math.sin(a)*R*0.78;
+    const rg=ctx.createRadialGradient(rx,ry,0,rx,ry,R*0.38);
+    rg.addColorStop(0,rc); rg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=rg; ctx.fillRect(cx-R,cy-R,R*2,R*2);
+  });
+
+  // Second rainbow band — top right
+  const rainbowAngles2=[
+    {a:-0.15*Math.PI, color:'rgba(255,120,120,0.15)'},
+    {a:-0.1*Math.PI,  color:'rgba(255,200,100,0.12)'},
+    {a:-0.05*Math.PI, color:'rgba(120,255,160,0.12)'},
+    {a:0.0*Math.PI,   color:'rgba(100,200,255,0.15)'},
+  ];
+  rainbowAngles2.forEach(({a,color:rc})=>{
+    const rx=cx+Math.cos(a)*R*0.82, ry=cy+Math.sin(a)*R*0.82;
+    const rg=ctx.createRadialGradient(rx,ry,0,rx,ry,R*0.28);
+    rg.addColorStop(0,rc); rg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=rg; ctx.fillRect(cx-R,cy-R,R*2,R*2);
+  });
+
+  // ── 6. Large soft primary specular (top-left arc) ──
+  ctx.save();
+  ctx.translate(cx-R*0.18, cy-R*0.26);
+  ctx.rotate(-0.38);
+  ctx.scale(1, 0.48);
+  const spec1=ctx.createRadialGradient(0,0,0,0,0,R*0.55);
+  spec1.addColorStop(0,'rgba(255,255,255,0.72)');
+  spec1.addColorStop(0.35,'rgba(255,255,255,0.22)');
+  spec1.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(0,0,R*0.55,0,Math.PI*2);
+  ctx.fillStyle=spec1; ctx.fill();
+  ctx.restore();
+
+  // ── 7. Secondary specular arc (middle-right) — matches ref photo ──
+  ctx.save();
+  ctx.translate(cx+R*0.3, cy+R*0.05);
+  ctx.rotate(0.5);
+  ctx.scale(0.4, 1);
+  const spec2=ctx.createRadialGradient(0,0,0,0,0,R*0.45);
+  spec2.addColorStop(0,'rgba(255,255,255,0.38)');
+  spec2.addColorStop(0.5,'rgba(255,255,255,0.08)');
+  spec2.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(0,0,R*0.45,0,Math.PI*2);
+  ctx.fillStyle=spec2; ctx.fill();
+  ctx.restore();
+
+  // ── 8. Bright sharp pinpoint highlight ──
+  const dot1=ctx.createRadialGradient(cx-R*0.33,cy-R*0.40,0,cx-R*0.33,cy-R*0.40,R*0.11);
+  dot1.addColorStop(0,'rgba(255,255,255,1)');
+  dot1.addColorStop(0.4,'rgba(255,255,255,0.6)');
+  dot1.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(cx-R*0.33,cy-R*0.40,R*0.11,0,Math.PI*2);
+  ctx.fillStyle=dot1; ctx.fill();
+
+  // ── 9. Secondary tiny highlight dot ──
+  const dot2=ctx.createRadialGradient(cx+R*0.18,cy-R*0.52,0,cx+R*0.18,cy-R*0.52,R*0.055);
+  dot2.addColorStop(0,'rgba(255,255,255,0.9)');
+  dot2.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(cx+R*0.18,cy-R*0.52,R*0.055,0,Math.PI*2);
+  ctx.fillStyle=dot2; ctx.fill();
+
+  // ── 10. Animated shimmer ──
+  const shimmerT=t*0.016;
+  const sx=cx+Math.cos(shimmerT)*R*0.22;
+  const sy=cy+Math.sin(shimmerT*0.65)*R*0.14-R*0.1;
+  const shimG=ctx.createRadialGradient(sx,sy,0,sx,sy,R*0.18);
+  shimG.addColorStop(0,`rgba(255,255,255,${0.28+0.18*Math.sin(shimmerT)})`);
+  shimG.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(sx,sy,R*0.18,0,Math.PI*2);
+  ctx.fillStyle=shimG; ctx.fill();
+
+  // ── 11. Bottom color caustic bloom ──
+  const bloom=ctx.createRadialGradient(cx+R*0.08,cy+R*0.55,0,cx+R*0.05,cy+R*0.5,R*0.5);
+  bloom.addColorStop(0,`rgba(${cr},${cg},${cb},0.45)`);
+  bloom.addColorStop(1,`rgba(${cr},${cg},${cb},0)`);
+  ctx.beginPath(); ctx.ellipse(cx+R*0.05,cy+R*0.5,R*0.42,R*0.28,0.3,0,Math.PI*2);
+  ctx.fillStyle=bloom; ctx.fill();
+
+  ctx.restore(); // unclip sphere
+
+  // ── 12. Crystal rim — multiple strokes like the reference ──
+  // Outer rim
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle=`rgba(255,255,255,${0.32+hover*0.2})`;
+  ctx.lineWidth=1.5; ctx.stroke();
+
+  // Inner rim 1
+  ctx.beginPath(); ctx.arc(cx,cy,R*0.91,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.08)';
+  ctx.lineWidth=1; ctx.stroke();
+
+  // Inner rim 2 — prismatic
+  ctx.beginPath(); ctx.arc(cx,cy,R*0.96,0,Math.PI*2);
+  ctx.strokeStyle=`rgba(${cr+30},${cg+20},${cb+40},0.12)`;
+  ctx.lineWidth=0.8; ctx.stroke();
+
+  // Hover glow ring
+  if(hover>0.02){
+    ctx.beginPath(); ctx.arc(cx,cy,R+8,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(${cr},${cg},${cb},${hover*0.5})`;
+    ctx.lineWidth=2.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx,cy,R+16,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(${cr},${cg},${cb},${hover*0.15})`;
+    ctx.lineWidth=3; ctx.stroke();
+  }
+
+  // ── 13. LIVE indicator for person bubbles ──
+  if(isPerson){
+    ctx.fillStyle=`rgba(34,197,94,${0.8+0.2*Math.sin(t*0.08)})`;
+    ctx.beginPath(); ctx.arc(cx+R*0.6,cy-R*0.62,R*0.09,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=`rgba(34,197,94,${0.2+0.15*Math.sin(t*0.08)})`;
+    ctx.beginPath(); ctx.arc(cx+R*0.6,cy-R*0.62,R*0.15*(0.7+0.3*Math.sin(t*0.08)),0,Math.PI*2); ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// ════════════════════════════════════════
+// STARS + BG BLOBS
+// ════════════════════════════════════════
+function initStars(){
+  stars=Array.from({length:140},()=>({
+    x:Math.random(),y:Math.random(),r:Math.random()*0.9+0.1,
+    a:Math.random()*0.3+0.03,tw:Math.random()*Math.PI*2,
+    ts:0.0015+Math.random()*0.004,dx:(Math.random()-0.5)*0.00004,
+  }));
+}
+initStars();
+function drawStars(){
+  for(const s of stars){
+    s.x+=s.dx; s.tw+=s.ts;
+    if(s.x<0)s.x=1; if(s.x>1)s.x=0;
+    ctx.beginPath(); ctx.arc(s.x*W,s.y*H,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(210,222,255,${s.a*(0.5+0.5*Math.sin(s.tw))})`; ctx.fill();
+  }
+}
+
+// No background blobs — clean gradient only
+
+// ════════════════════════════════════════
+// BUBBLE CLASS
+// ════════════════════════════════════════
+class Bubble{
+  constructor({cx,cy,r,colorIdx,name,sub,data,delay,streamType}){
+    this.targetX=cx; this.targetY=cy;
+    this.x=W/2; this.y=H/2;
+    this.r=r; this.color=COLORS[colorIdx%COLORS.length];
+    this.name=name; this.sub=sub||''; this.data=data;
+    this.alpha=0; this.scale=0.22; this.born=T+delay;
+    this.hover=0; this.streamType=streamType||null;
+    this.streamCanvas=null; this.streamCtx=null;
+    // Subtle, slow breathe — just a hint of organic life
+    this.harmonics=[
+      {amp:r*0.028, freq:2, phase:Math.random()*Math.PI*2, speed:(0.00014+Math.random()*0.0001)*(Math.random()<0.5?1:-1)},
+      {amp:r*0.018, freq:3, phase:Math.random()*Math.PI*2, speed:(0.0002+Math.random()*0.00012)*(Math.random()<0.5?1:-1)},
+      {amp:r*0.010, freq:5, phase:Math.random()*Math.PI*2, speed:(0.0003+Math.random()*0.00015)*(Math.random()<0.5?1:-1)},
+      {amp:r*0.006, freq:7, phase:Math.random()*Math.PI*2, speed:(0.00042+Math.random()*0.0002)*(Math.random()<0.5?1:-1)},
+    ];
+    this.iridPhase=Math.random()*Math.PI*2;
+    this.iridSpeed=0.0003+Math.random()*0.0002;
+    this.floatPhase=Math.random()*Math.PI*2;
+    this.floatAmp=5+Math.random()*7;
+    this.floatSpeedX=0.00025+Math.random()*0.00022;
+    this.floatSpeedY=0.0002+Math.random()*0.0002;
+    this.lastPts=[]; this.drawX=cx; this.drawY=cy;
+    if(this.streamType){
+      const s=Math.ceil(r*2);
+      this.streamCanvas=document.createElement('canvas');
+      this.streamCanvas.width=s; this.streamCanvas.height=s;
+      this.streamCtx=this.streamCanvas.getContext('2d');
+    }
+  }
+  get isReady(){ return T>=this.born; }
+  update(){
+    if(!this.isReady) return;
+    this.x+=(this.targetX-this.x)*0.09;
+    this.y+=(this.targetY-this.y)*0.09;
+    this.alpha=Math.min(1,this.alpha+0.05);
+    this.scale+=(1-this.scale)*0.07;
+    if(this.streamCanvas&&this.streamType){
+      const sc=this.streamCtx, s=this.streamCanvas.width;
+      const renderer=STREAMS[this.streamType];
+      if(renderer) renderer(sc,0,0,s,s,T);
+    }
+  }
+  draw(mX,mY){
+    if(!this.isReady||this.alpha<0.01) return;
+    const fx=Math.sin(T*this.floatSpeedX+this.floatPhase)*this.floatAmp;
+    const fy=Math.cos(T*this.floatSpeedY+this.floatPhase*1.4)*this.floatAmp*1.3;
+    this.drawX=this.x+fx; this.drawY=this.y+fy;
+    const pts=blobPoints(this.drawX,this.drawY,this.r*this.scale,this.harmonics,T);
+    this.lastPts=pts;
+    const isHovered=pointInBlob(mX,mY,pts);
+    this.hover+=((isHovered?1:0)-this.hover)*0.1;
+    ctx.save(); ctx.globalAlpha=this.alpha;
+    // use morphing clip path for blob shape, but draw crystal sphere inside
+    ctx.save();
+    drawBlobPath(pts); ctx.clip();
+    drawCrystalBubble(this.drawX,this.drawY,this.r*this.scale,this.color,T,this.hover,!!this.streamType,this.streamCanvas);
+    ctx.restore();
+    // ── Outer morphing rim — bright white ──
+    drawBlobPath(pts);
+    ctx.strokeStyle=`rgba(255,255,255,${0.38+this.hover*0.22})`; ctx.lineWidth=1.8; ctx.stroke();
+
+    // ── Iridescent color rim — subtle prismatic whisper ──
+    {
+      const iT=T*this.iridSpeed+this.iridPhase;
+      const rimPts=blobPoints(this.drawX,this.drawY,this.r*this.scale*1.0,this.harmonics,T);
+      const n=rimPts.length;
+      for(let i=0;i<n;i++){
+        const p0=rimPts[i], p1=rimPts[(i+1)%n];
+        const prog=i/n;
+        const hue=(prog*360+iT*60)%360;
+        const alpha=0.06+0.05*Math.sin(prog*Math.PI*4+iT*2);
+        ctx.beginPath();
+        ctx.moveTo((p0.x+p1.x)/2,(p0.y+p1.y)/2);
+        ctx.lineTo(p1.x,p1.y);
+        ctx.strokeStyle=`hsla(${hue},80%,80%,${alpha})`;
+        ctx.lineWidth=1.2;
+        ctx.stroke();
+      }
+    }
+
+    // ── Inner morphing rim ──
+    {const ip=blobPoints(this.drawX,this.drawY,this.r*this.scale*0.91,this.harmonics,T);
+    drawBlobPath(ip); ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=0.8; ctx.stroke();}
+
+    // ── Second inner glow ring — pulsing ──
+    {const ip2=blobPoints(this.drawX,this.drawY,this.r*this.scale*0.97,this.harmonics,T);
+    drawBlobPath(ip2);
+    const [cr,cg,cb]=this.color;
+    ctx.strokeStyle=`rgba(${cr},${cg},${cb},${0.12+0.08*Math.sin(T*0.012+this.floatPhase)})`;
+    ctx.lineWidth=2.5; ctx.stroke();}
+
+    // ── Hover outer glow ──
+    if(this.hover>0.01){
+      const op=blobPoints(this.drawX,this.drawY,this.r*this.scale*1.14,this.harmonics,T);
+      drawBlobPath(op);
+      const [cr,cg,cb]=this.color;
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},${this.hover*0.55})`; ctx.lineWidth=3; ctx.stroke();
+      drawBlobPath(op);
+      ctx.strokeStyle=`rgba(255,255,255,${this.hover*0.18})`; ctx.lineWidth=1.5; ctx.stroke();
+    }
+    ctx.restore();
+
+    // milestone tracker drawn separately after all bubbles
+
+    // ── Label ──
+    ctx.save(); ctx.globalAlpha=this.alpha;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    const ns=Math.max(9,this.r*this.scale*0.2);
+    ctx.font=`600 ${ns}px -apple-system,SF Pro Display,sans-serif`;
+    ctx.fillStyle='rgba(255,255,255,0.95)';
+    ctx.shadowColor='rgba(0,0,0,0.9)'; ctx.shadowBlur=12;
+    const isProject = !!(this.data && this.data.milestones);
+    if(!isProject){
+      const ly = this.sub ? this.drawY - ns*0.5 : this.drawY;
+      ctx.fillText(this.name,this.drawX,ly);
+      if(this.sub){
+        ctx.font=`400 ${Math.max(8,this.r*this.scale*0.14)}px -apple-system,sans-serif`;
+        ctx.fillStyle='rgba(255,255,255,0.38)'; ctx.shadowBlur=4;
+        ctx.fillText(this.sub,this.drawX,ly+ns*0.95);
+      }
+    }
+    ctx.restore();
+  }
+  hitTest(px,py){
+    if(this.lastPts.length<3){const dx=px-this.drawX,dy=py-this.drawY;return Math.hypot(dx,dy)<this.r*1.2;}
+    return pointInBlob(px,py,this.lastPts);
+  }
+}
+
+// ════════════════════════════════════════
+// SCENE
+// ════════════════════════════════════════
+function circular(n,cx,cy,rad){
+  return Array.from({length:n},(_,i)=>{const a=(i/n)*Math.PI*2-Math.PI/2;return{x:cx+Math.cos(a)*rad,y:cy+Math.sin(a)*rad};});
+}
+function buildProjects(){
+  bubbles=[];const cx=W/2,cy=H/2;const rad=Math.min(W,H)*0.27,r=Math.min(W,H)*0.105;
+  const pos=circular(DATA.projects.length,cx,cy,rad);
+  DATA.projects.forEach((p,i)=>bubbles.push(new Bubble({cx:pos[i].x,cy:pos[i].y,r,colorIdx:i,name:p.name,sub:p.sub,data:p,delay:i*8})));
+}
+function buildTeams(proj){
+  bubbles=[];const cx=W/2,cy=H/2;const rad=Math.min(W,H)*0.24,r=Math.min(W,H)*0.09;
+  const pos=circular(proj.teams.length,cx,cy,rad);
+  proj.teams.forEach((t,i)=>bubbles.push(new Bubble({cx:pos[i].x,cy:pos[i].y,r,colorIdx:i+2,name:t.name,sub:t.sub,data:t,delay:i*8})));
+}
+function buildPeople(team){
+  bubbles=[];const cx=W/2,cy=H/2;const n=team.people.length;
+  const rad=Math.min(W,H)*(n<=3?0.2:0.23),r=Math.min(W,H)*0.09;
+  const pos=circular(n,cx,cy,rad);
+  team.people.forEach((p,i)=>bubbles.push(new Bubble({cx:pos[i].x,cy:pos[i].y,r,colorIdx:i+4,name:p.name,sub:'',data:p,delay:i*8,streamType:p.stream})));
+}
+function rebuildScene(){
+  if(level===0)buildProjects();
+  else if(level===1&&currentProject)buildTeams(currentProject);
+  else if(level===2&&currentTeam)buildPeople(currentTeam);
+}
+
+// ════════════════════════════════════════
+// CONNECTIONS
+// ════════════════════════════════════════
+function drawConnections(){
+  if(bubbles.length<2)return;
+  const cx=W/2,cy=H/2;
+  for(const b of bubbles){
+    if(b.alpha<0.05)continue;
+    const g=ctx.createLinearGradient(cx,cy,b.drawX,b.drawY);
+    g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(0.5,`rgba(255,255,255,${0.06*b.alpha})`);g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(b.drawX,b.drawY);ctx.strokeStyle=g;ctx.lineWidth=0.7;ctx.stroke();
+  }
+  for(let i=0;i<bubbles.length;i++)for(let j=i+1;j<bubbles.length;j++){
+    const a=bubbles[i],b2=bubbles[j];if(a.alpha<0.1||b2.alpha<0.1)continue;
+    const dist=Math.hypot(a.drawX-b2.drawX,a.drawY-b2.drawY);
+    if(dist<300){ctx.beginPath();ctx.moveTo(a.drawX,a.drawY);ctx.lineTo(b2.drawX,b2.drawY);ctx.strokeStyle=`rgba(255,255,255,${(1-dist/300)*0.05})`;ctx.lineWidth=0.5;ctx.stroke();}
+  }
+}
+
+// ════════════════════════════════════════
+// PORTAL
+// ════════════════════════════════════════
+function portalZoom(x,y,cb){
+  const p=document.getElementById('portal');
+  p.style.transformOrigin=`${x}px ${y}px`;
+  p.style.background=`radial-gradient(circle at ${x}px ${y}px,rgba(255,255,255,0.25) 0%,transparent 45%)`;
+  p.classList.remove('zooming','zooming-out');void p.offsetWidth;p.classList.add('zooming');
+  transitioning=true;setTimeout(cb,380);setTimeout(()=>{p.classList.remove('zooming');transitioning=false;},800);
+}
+function portalZoomOut(cb){
+  const p=document.getElementById('portal');
+  p.classList.remove('zooming','zooming-out');void p.offsetWidth;p.classList.add('zooming-out');
+  transitioning=true;setTimeout(cb,240);setTimeout(()=>{p.classList.remove('zooming-out');transitioning=false;},560);
+}
+
+// ════════════════════════════════════════
+// PERSON PANEL
+// ════════════════════════════════════════
+let panelStreamT=0;
+let panelStreamActive=false;
+let panelStreamType=null;
+let panelRafId=null;
+
+function openPersonPanel(person){
+  document.getElementById('person-name-sm').textContent=person.name;
+  document.getElementById('person-role-sm').textContent=person.role;
+  const av=document.getElementById('panel-avatar');
+  av.textContent=person.name.charAt(0);
+  av.style.background=`hsl(${person.name.charCodeAt(0)*15%360},60%,35%)`;
+  document.getElementById('notes-list').innerHTML=person.notes.map(n=>
+    `<div class="note-item"><div class="note-time">${n.time}</div><div class="note-text">${n.text}</div></div>`
+  ).join('');
+  document.getElementById('person-panel').classList.add('open');
+  panelStreamType=person.stream;
+  panelStreamActive=true;
+  startPanelStream();
+}
+function closePanel(){
+  document.getElementById('person-panel').classList.remove('open');
+  panelStreamActive=false;
+  if(panelRafId){cancelAnimationFrame(panelRafId);panelRafId=null;}
+}
+function startPanelStream(){
+  const el=document.getElementById('stream-canvas-el');
+  const container=document.getElementById('stream-container');
+  el.width=container.clientWidth*(window.devicePixelRatio||1);
+  el.height=container.clientHeight*(window.devicePixelRatio||1);
+  el.style.width=container.clientWidth+'px';
+  el.style.height=container.clientHeight+'px';
+  const c=el.getContext('2d');
+  c.scale(window.devicePixelRatio||1,window.devicePixelRatio||1);
+  const W2=container.clientWidth, H2=container.clientHeight;
+  function tick(){
+    if(!panelStreamActive)return;
+    c.clearRect(0,0,W2,H2);
+    const renderer=STREAMS[panelStreamType];
+    if(renderer)renderer(c,0,0,W2,H2,panelStreamT);
+    panelStreamT+=0.6;
+    panelRafId=requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+// ════════════════════════════════════════
+// INPUT
+// ════════════════════════════════════════
+canvas.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;});
+canvas.addEventListener('click',e=>handleTap(e.clientX,e.clientY));
+canvas.addEventListener('touchend',e=>{e.preventDefault();const t=e.changedTouches[0];handleTap(t.clientX,t.clientY);},{passive:false});
+
+function handleTap(px,py){
+  if(transitioning)return;
+  for(const b of bubbles){
+    if(!b.hitTest(px,py))continue;
+    if(level===0){currentProject=b.data;portalZoom(px,py,()=>{level=1;buildTeams(currentProject);updateUI();});}
+    else if(level===1){currentTeam=b.data;portalZoom(px,py,()=>{level=2;buildPeople(currentTeam);updateUI();});}
+    else if(level===2){openPersonPanel(b.data);}
+    return;
+  }
+}
+function goBack(){
+  if(transitioning)return;
+  if(level===1)portalZoomOut(()=>{level=0;buildProjects();updateUI();});
+  else if(level===2)portalZoomOut(()=>{level=1;buildTeams(currentProject);updateUI();});
+}
+function navTo(t){
+  if(transitioning)return;
+  portalZoomOut(()=>{level=t;if(t===0){currentProject=null;currentTeam=null;buildProjects();}else if(t===1){currentTeam=null;buildTeams(currentProject);}updateUI();});
+}
+function renderMilestoneBar(project){
+  const bar = document.getElementById('milestone-bar');
+  if(!project || !project.milestones || level !== 1){
+    bar.classList.remove('visible');
+    return;
+  }
+  bar.classList.add('visible');
+
+  const milestones = project.milestones;
+  const n = milestones.length;
+  const dpr = window.devicePixelRatio || 1;
+  const nodeR_big = 7, nodeR_small = 5;
+  const spacing = 62;
+  const trackW = spacing * (n - 1);
+  const padX = 24, padY = 28;
+  const cW = trackW + padX * 2;
+  const cH = padY + 26 + 22; // room for nodes + labels
+
+  bar.innerHTML = '';
+  const cv = document.createElement('canvas');
+  cv.width = cW * dpr; cv.height = cH * dpr;
+  cv.style.width = cW + 'px'; cv.style.height = cH + 'px';
+  bar.appendChild(cv);
+
+  const c = cv.getContext('2d');
+  c.scale(dpr, dpr);
+
+  const trackY = padY;
+  const lastDone = milestones.reduce((acc,m,i) => m.done ? i : acc, -1);
+  const firstPending = lastDone + 1;
+
+  // ── Track background ──
+  c.beginPath();
+  c.moveTo(padX, trackY);
+  c.lineTo(padX + trackW, trackY);
+  c.strokeStyle = 'rgba(255,255,255,0.14)';
+  c.lineWidth = 2; c.lineCap = 'round'; c.stroke();
+
+  // ── Completed track — bright green ──
+  if(lastDone >= 0){
+    const doneX = padX + lastDone * spacing;
+    // Glow
+    c.beginPath(); c.moveTo(padX,trackY); c.lineTo(doneX,trackY);
+    c.strokeStyle='rgba(60,255,110,0.3)'; c.lineWidth=6; c.lineCap='round'; c.stroke();
+    // Crisp line
+    c.beginPath(); c.moveTo(padX,trackY); c.lineTo(doneX,trackY);
+    c.strokeStyle='rgba(60,255,110,0.95)'; c.lineWidth=2.5; c.lineCap='round'; c.stroke();
+  }
+
+  // ── Nodes + labels — size maps importance (0.5=tiny to 1.0=large) ──
+  // Min radius 4px, max radius 14px — big visible difference
+  milestones.forEach((m, i) => {
+    const nx = padX + i * spacing;
+    const r = 4 + m.size * 9; // 4px → 13px — clear but not huge
+    // bottom-align all nodes to same baseline
+    const ny = trackY + (13 - r);
+    const isDone = m.done;
+    const isNext = !isDone && i === firstPending;
+
+    // Pulse glow for next milestone
+    if(isNext){
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.004);
+      c.beginPath(); c.arc(nx, ny, r * 2.2, 0, Math.PI*2);
+      c.fillStyle = `rgba(255,255,255,${0.05 * pulse})`; c.fill();
+      c.beginPath(); c.arc(nx, ny, r * 1.55, 0, Math.PI*2);
+      c.strokeStyle = `rgba(255,255,255,${0.25 * pulse})`;
+      c.lineWidth = 1; c.stroke();
+    }
+
+    if(isDone){
+      const grad = c.createRadialGradient(nx-r*0.3, ny-r*0.35, 0, nx, ny, r);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(1, 'rgba(210,222,255,0.92)');
+      c.beginPath(); c.arc(nx, ny, r, 0, Math.PI*2);
+      c.fillStyle = grad; c.fill();
+      // checkmark scaled to node
+      c.save();
+      c.strokeStyle = 'rgba(15,25,70,0.65)'; c.lineWidth = Math.max(1, r * 0.38);
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      c.beginPath();
+      c.moveTo(nx - r*0.3, ny + r*0.05);
+      c.lineTo(nx - r*0.04, ny + r*0.3);
+      c.lineTo(nx + r*0.34, ny - r*0.26);
+      c.stroke(); c.restore();
+    } else {
+      c.beginPath(); c.arc(nx, ny, r, 0, Math.PI*2);
+      c.fillStyle = isNext ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.03)';
+      c.fill();
+      c.strokeStyle = isNext ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.22)';
+      c.lineWidth = isNext ? 2 : 1.5; c.stroke();
+      // label size hint on large important nodes
+      if(m.size >= 0.9){
+        c.font = `600 9px -apple-system, sans-serif`;
+        c.fillStyle = 'rgba(255,255,255,0.45)';
+        c.textAlign = 'center';
+        c.fillText('★', nx, ny + 1);
+      }
+    }
+
+    // Label below — offset from bottom of largest node
+    const labelY = trackY + 13 + 11;
+    c.font = `${m.size >= 0.9 ? 600 : 500} ${m.size >= 0.9 ? 10 : 9}px -apple-system, sans-serif`;
+    c.fillStyle = isDone
+      ? 'rgba(80,255,120,0.9)'
+      : isNext ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.22)';
+    c.textAlign = 'center';
+    c.fillText(m.label, nx, labelY);
+  });
+
+  // Reanimate pulse every frame
+  requestAnimationFrame(() => {
+    if(level === 1 && currentProject) renderMilestoneBar(currentProject);
+  });
+}
+
+function updateUI(){
+  const bc=document.getElementById('breadcrumb');
+  let html=`<span class="${level===0?'active':''}" onclick="if(level>0)navTo(0)">Projects</span>`;
+  if(level>=1&&currentProject)html+=`<span class="sep">›</span><span class="${level===1?'active':''}" onclick="if(level>1)navTo(1)">${currentProject.name}</span>`;
+  if(level>=2&&currentTeam)html+=`<span class="sep">›</span><span class="active">${currentTeam.name}</span>`;
+  bc.innerHTML=html;
+  level>0?document.getElementById('back-btn').classList.add('show'):document.getElementById('back-btn').classList.remove('show');
+  const hints=['Tap a bubble to zoom in','Tap a team to meet the people','Tap a person to open their workspace'];
+  document.getElementById('hint').textContent=hints[level]||'';
+  renderMilestoneBar(currentProject);
+}
+
+
+// ════════════════════════════════════════
+// BACKGROUND GRADIENT
+// ════════════════════════════════════════
+function drawBgGradient(){
+  // Deep indigo bloom — top left
+  const cx1=W*0.25+Math.sin(T*0.00015)*W*0.05;
+  const cy1=H*0.28+Math.cos(T*0.00012)*H*0.04;
+  const g1=ctx.createRadialGradient(cx1,cy1,0,cx1,cy1,Math.min(W,H)*0.8);
+  g1.addColorStop(0,'rgba(55,60,160,0.28)');
+  g1.addColorStop(1,'rgba(55,60,160,0)');
+  ctx.fillStyle=g1; ctx.fillRect(0,0,W,H);
+
+  // Midnight blue — bottom right
+  const cx2=W*0.75+Math.sin(T*0.00011+1)*W*0.05;
+  const cy2=H*0.72+Math.cos(T*0.00013+2)*H*0.04;
+  const g2=ctx.createRadialGradient(cx2,cy2,0,cx2,cy2,Math.min(W,H)*0.7);
+  g2.addColorStop(0,'rgba(30,50,140,0.22)');
+  g2.addColorStop(1,'rgba(30,50,140,0)');
+  ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+
+  // Soft violet center — barely there
+  const cx3=W*0.5+Math.sin(T*0.00009+3)*W*0.04;
+  const cy3=H*0.48+Math.cos(T*0.0001+1)*H*0.04;
+  const g3=ctx.createRadialGradient(cx3,cy3,0,cx3,cy3,Math.min(W,H)*0.6);
+  g3.addColorStop(0,'rgba(70,55,160,0.12)');
+  g3.addColorStop(1,'rgba(70,55,160,0)');
+  ctx.fillStyle=g3; ctx.fillRect(0,0,W,H);
+}
+
+// ════════════════════════════════════════
+// PROGRESS PIES — drawn LAST, on top of everything
+// ════════════════════════════════════════
+function projectProgress(p){
+  const ms = p.milestones || [];
+  if(!ms.length) return {prog:0, done:0, total:0};
+  const done = ms.filter(m=>m.done).length;
+  return {prog: done/ms.length, done, total: ms.length};
+}
+
+function drawAllProgressPies(){
+  if(level !== 0) return;
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+
+  for(const b of bubbles){
+    if(!b.data || !b.data.milestones) continue;
+    const {prog, done, total} = projectProgress(b.data);
+
+    // ── ease the fill up on appear ──
+    if(b._prog === undefined) b._prog = 0;
+    b._prog += (prog - b._prog) * 0.06;
+    const p = b._prog;
+
+    const R   = b.r * b.scale;
+    const cx  = b.drawX, cy = b.drawY;
+    const rP  = R * 0.84;            // pie sits inside the rim so glass + specular stay visible
+    const a0  = -Math.PI / 2;        // 12 o'clock
+    const a1  = a0 + p * Math.PI * 2;
+
+    ctx.save();
+    ctx.globalAlpha = b.alpha;       // fade in with the bubble
+
+    // ════ LIQUID-GLASS PROGRESS LENS ════
+    // Everything is clipped to the pie disc so it reads as one glass lens.
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, rP, 0, Math.PI*2); ctx.clip();
+
+    // (a) cool frosted plate — faint, lets the orb glass shimmer through
+    const plate = ctx.createRadialGradient(cx-rP*0.2, cy-rP*0.25, 0, cx, cy, rP);
+    plate.addColorStop(0, 'rgba(40,52,70,0.22)');
+    plate.addColorStop(1, 'rgba(6,10,18,0.20)');
+    ctx.fillStyle = plate;
+    ctx.fillRect(cx-rP, cy-rP, rP*2, rP*2);
+
+    // (b) green tinted "liquid" wedge — translucent, layered like glass
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, rP, a0, a1, false);
+    ctx.closePath();
+    ctx.clip();                       // clip to the wedge for the liquid layers
+
+    // body tint
+    const body = ctx.createRadialGradient(cx-rP*0.2, cy-rP*0.3, rP*0.05, cx, cy, rP*1.1);
+    body.addColorStop(0,   'rgba(110,240,170,0.62)');
+    body.addColorStop(0.55,'rgba(40,200,110,0.50)');
+    body.addColorStop(1,   'rgba(16,150,90,0.46)');
+    ctx.fillStyle = body;
+    ctx.fillRect(cx-rP, cy-rP, rP*2, rP*2);
+
+    // top gloss — bright curved sheen, like light on a glass dome
+    const gloss = ctx.createRadialGradient(cx-rP*0.28, cy-rP*0.42, 0, cx-rP*0.28, cy-rP*0.42, rP*0.9);
+    gloss.addColorStop(0,   'rgba(255,255,255,0.45)');
+    gloss.addColorStop(0.3, 'rgba(220,255,235,0.16)');
+    gloss.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.fillStyle = gloss;
+    ctx.fillRect(cx-rP, cy-rP, rP*2, rP*2);
+
+    // bottom caustic — light pooling deep in the liquid
+    const caustic = ctx.createRadialGradient(cx+rP*0.1, cy+rP*0.5, 0, cx+rP*0.1, cy+rP*0.5, rP*0.7);
+    caustic.addColorStop(0, 'rgba(180,255,210,0.30)');
+    caustic.addColorStop(1, 'rgba(180,255,210,0)');
+    ctx.fillStyle = caustic;
+    ctx.fillRect(cx-rP, cy-rP, rP*2, rP*2);
+    ctx.restore();                    // unclip wedge
+
+    // (c) glass dome specular over the WHOLE lens (unifies it)
+    const dome = ctx.createRadialGradient(cx-rP*0.3, cy-rP*0.45, 0, cx-rP*0.3, cy-rP*0.45, rP*1.05);
+    dome.addColorStop(0,   'rgba(255,255,255,0.22)');
+    dome.addColorStop(0.4, 'rgba(255,255,255,0.05)');
+    dome.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.fillStyle = dome;
+    ctx.fillRect(cx-rP, cy-rP, rP*2, rP*2);
+
+    // (d) crescent sheen along the top inner rim — refractive highlight
+    ctx.beginPath();
+    ctx.arc(cx, cy, rP*0.96, Math.PI*1.08, Math.PI*1.92, false);
+    ctx.strokeStyle = 'rgba(255,255,255,0.40)';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // (e) soft inner shadow at rim — gives the lens depth
+    const innerShadow = ctx.createRadialGradient(cx, cy, rP*0.66, cx, cy, rP);
+    innerShadow.addColorStop(0, 'rgba(0,0,0,0)');
+    innerShadow.addColorStop(1, 'rgba(0,0,0,0.30)');
+    ctx.fillStyle = innerShadow;
+    ctx.fillRect(cx-rP, cy-rP, rP*2, rP*2);
+
+    ctx.restore();                    // unclip lens
+
+    // (f) bright liquid meniscus along the filled arc
+    ctx.lineWidth = 2.4;
+    ctx.strokeStyle = 'rgba(190,255,215,0.85)';
+    ctx.beginPath(); ctx.arc(cx, cy, rP, a0, a1, false); ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.arc(cx, cy, rP*0.985, a0, a1, false); ctx.stroke();
+
+    // (g) leading edge + glowing head dot
+    if(p > 0.003 && p < 0.997){
+      const hx = cx + Math.cos(a1)*rP, hy = cy + Math.sin(a1)*rP;
+      ctx.strokeStyle = 'rgba(225,255,235,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(hx, hy); ctx.stroke();
+      const head = ctx.createRadialGradient(hx, hy, 0, hx, hy, R*0.14);
+      head.addColorStop(0, 'rgba(210,255,225,1)');
+      head.addColorStop(1, 'rgba(210,255,225,0)');
+      ctx.fillStyle = head;
+      ctx.beginPath(); ctx.arc(hx, hy, R*0.14, 0, Math.PI*2); ctx.fill();
+    }
+
+    // (h) 12 o'clock start divider
+    ctx.strokeStyle = 'rgba(255,255,255,0.30)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy-rP); ctx.stroke();
+
+    // (i) glassy defining ring — bright outer + faint inner
+    ctx.strokeStyle = 'rgba(255,255,255,0.40)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(cx, cy, rP, 0, Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, rP*0.93, 0, Math.PI*2); ctx.stroke();
+
+    // (j) title + percent, on top of the lens
+    const ns = Math.max(9, R*0.2);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.95)'; ctx.shadowBlur = 12;
+    ctx.font = `600 ${ns}px -apple-system, SF Pro Display, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    ctx.fillText(b.name, cx, cy - ns*0.42);
+    // percent — bigger, brighter, with a soft dark halo for legibility
+    ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 8;
+    ctx.font = `600 ${Math.max(11, R*0.20)}px -apple-system, SF Pro Display, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText(Math.round(p*100) + '%', cx, cy + ns*0.7);
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ════════════════════════════════════════
+// LOOP
+// ════════════════════════════════════════
+function loop(){
+  ctx.clearRect(0,0,W,H);
+  // Dark blue-grey base
+  ctx.fillStyle='#12131f';
+  ctx.fillRect(0,0,W,H);
+  drawBgGradient();
+  drawStars();
+  drawConnections();
+  for(const b of bubbles){b.update();b.draw(mouseX,mouseY);}
+  if(level===0) drawAllProgressPies();
+
+  canvas.style.cursor=bubbles.some(b=>b.hitTest(mouseX,mouseY))?'pointer':'default';
+  T+=0.6;
+  requestAnimationFrame(loop);
+}
+
+buildProjects();updateUI();loop();
+</script>
+</body>
+</html>
